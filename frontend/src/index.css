@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Noto Sans Arabic', sans-serif;
+  direction: rtl;
+  background: linear-gradient(to bottom right, #F3E8FF, #DBEAFE);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.bg-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23EDE9FE' fill-opacity='0.3'%3E%3Cpath d='M0 0h40v40H0z'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Ccircle cx='30' cy='10' r='2'/%3E%3Ccircle cx='10' cy='30' r='2'/%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* تنسيقات عامة للعناصر */
+input, select, button {
+  transition: all 0.3s ease-in-out;
+}
+
+input:focus, select:focus {
+  box-shadow: 0 0 8px rgba(147, 51, 234, 0.5); /* ظل موف عند التركيز */
+  border-color: #9333EA; /* purple-600 */
+}
+
+button {
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3); /* ظل موف عند الهوفر */
+}
+
+/* تنسيقات الجدول */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: right;
+}
+
+/* تنسيقات الـ modal */
+.modal {
+  max-width: 100%;
+  width: 32rem; /* max-w-lg */
+}
+
+.delete-modal {
+  max-width: 100%;
+  width: 24rem; /* max-w-md */
+}
+
+/* تنسيقات علامة الصح */
+.success-check {
+  animation: rotate-scale 2s ease-in-out forwards;
+}
+
+@keyframes rotate-scale {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+/* التجاوب مع الأجهزة */
+@media (max-width: 640px) { /* موبايل */
+  table {
+    font-size: 0.75rem; /* تصغير النص */
+  }
+  th, td {
+    padding: 0.5rem; /* تقليص البادينج */
+  }
+  .container {
+    padding: 0.5rem;
+  }
+  .text-xl {
+    font-size: 1rem;
+  }
+  .text-2xl {
+    font-size: 1.25rem;
+  }
+  button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  .modal {
+    width: 90%;
+  }
+  .delete-modal {
+    width: 90%;
+  }
+  .success-check {
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) { /* تابلت */
+  table {
+    font-size: 0.875rem;
+  }
+  th, td {
+    padding: 0.65rem;
+  }
+  .container {
+    padding: 1rem;
+  }
+  .modal {
+    width: 80%;
+  }
+  .delete-modal {
+    width: 70%;
+  }
+  .success-check {
+    width: 4rem;
+    height: 4rem;
+  }
+}
+
+@media (min-width: 1025px) { /* كمبيوتر */
+  .success-check {
+    width: 5rem;
+    height: 5rem;
+  }
+}
