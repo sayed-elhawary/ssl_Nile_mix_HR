@@ -3,11 +3,50 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Shift = require('../models/Shift');
 const Attendance = require('../models/Attendance');
-const SalaryAdjustment = require('../models/SalaryAdjustment');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 
 // دالة لتقريب الأرقام إلى خانتين عشريتين
 const roundNumber = (num) => Number(num.toFixed(2));
+
+// تسجيل الدخول
+router.post('/login', async (req, res) => {
+  try {
+    const { employeeCode, password } = req.body;
+
+    if (!employeeCode || !password) {
+      return res.status(400).json({ success: false, message: 'كود الموظف وكلمة المرور مطلوبان' });
+    }
+
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'كود الموظف غير صحيح' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'كلمة المرور غير صحيحة' });
+    }
+
+    const token = jwt.sign({ userId: user._id, employeeCode: user.employeeCode }, process.env.JWT_SECRET, {
+      expiresIn: '1h'
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'تم تسجيل الدخول بنجاح',
+      token,
+      user: {
+        employeeCode: user.employeeCode,
+        name: user.name,
+        department: user.department
+      }
+    });
+  } catch (error) {
+    console.error('خطأ في تسجيل الدخول:', error.stack);
+    return res.status(500).json({ success: false, message: 'حدث خطأ أثناء تسجيل الدخول', error: error.message });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {
@@ -100,17 +139,76 @@ router.delete('/delete/:id', async (req, res) => {
   }
 });
 
+router.put('/update-salary-adjustment/:employeeCode/:monthYear', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'غير مصرح: التوكن غير موجود' });
+    }
+
+    try {
+      jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'انتهت صلاحية التوكن، يرجى تسجيل الدخول مرة أخرى' });
+      }
+      return res.status(401).json({ success: false, message: 'التوكن غير صالح', error: err.message });
+    }
+
+    const { employeeCode, monthYear } = req.params;
+    const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment, occasionBonus } = req.body;
+
+    if (!employeeCode || !monthYear) {
+      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان' });
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
+      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
+    }
+
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'الموظف غير موجود' });
+    }
+
+    if (!user.salaryAdjustments) {
+      user.salaryAdjustments = new Map();
+    }
+
+    user.salaryAdjustments.set(monthYear, {
+      totalViolations: totalViolations || 0,
+      deductionViolationsInstallment: deductionViolationsInstallment || 0,
+      totalAdvances: totalAdvances || 0,
+      deductionAdvancesInstallment: deductionAdvancesInstallment || 0,
+      occasionBonus: occasionBonus || 0
+    });
+
+    user.violationTotal = totalViolations || user.violationTotal || 0;
+    user.violationInstallment = deductionViolationsInstallment || user.violationInstallment || 0;
+    user.advanceTotal = totalAdvances || user.advanceTotal || 0;
+    user.advanceInstallment = deductionAdvancesInstallment || user.advanceInstallment || 0;
+    user.occasionBonus = occasionBonus || user.occasionBonus || 0;
+
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'تم تعديل تعديلات الراتب بنجاح' });
+  } catch (error) {
+    console.error('خطأ في updateSalaryAdjustment:', error.stack);
+    return res.status(500).json({ success: false, message: 'حدث خطأ أثناء التعديل', error: error.message });
+  }
+});
+
 router.get('/monthly-salary-report', async (req, res) => {
   try {
     const { month, year, employeeCode, shiftId } = req.query;
 
-    // التحقق من صحة المدخلات
     if (!month || !year || isNaN(month) || isNaN(year) || month < 1 || month > 12) {
       return res.status(400).json({ success: false, message: 'يجب إدخال شهر وسنة صالحين' });
     }
 
     const startDate = `${year}-${month.padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+    const monthYear = `${year}-${month.padStart(2, '0')}`;
 
     let userFilter = {};
     if (employeeCode) userFilter.employeeCode = employeeCode;
@@ -120,7 +218,6 @@ router.get('/monthly-salary-report', async (req, res) => {
     const reports = [];
 
     for (const user of users) {
-      // التحقق من وجود shiftType
       if (!user.shiftType) {
         console.warn(`User ${user.employeeCode} has no valid shiftType`);
         continue;
@@ -128,7 +225,6 @@ router.get('/monthly-salary-report', async (req, res) => {
 
       const shift = user.shiftType;
 
-      // التحقق من baseHours
       if (!shift.baseHours || shift.baseHours <= 0) {
         console.warn(`Invalid baseHours for user ${user.employeeCode}`);
         continue;
@@ -149,7 +245,7 @@ router.get('/monthly-salary-report', async (req, res) => {
       let totalDeductedDays = 0;
       let totalAnnualLeaveDays = 0;
       let totalSickLeaveDeduction = 0;
-      let totalSickLeaveDays = 0; // إضافة متغير جديد لعدد أيام الإجازة المرضية
+      let totalSickLeaveDays = 0;
       let totalLeaveAllowance = 0;
 
       for (const att of attendances) {
@@ -158,26 +254,24 @@ router.get('/monthly-salary-report', async (req, res) => {
         if (att.attendanceStatus === 'إجازة رسمية') totalOfficialLeaveDays++;
         if (att.attendanceStatus === 'غائب') totalAbsentDays++;
         totalOvertimeHours += att.overtimeHours || 0;
-        // فحص إضافي للتأكد من أن totalDeductedHours منطقي
         totalDeductedHours += (att.deductedHours && att.deductedHours < 100) ? att.deductedHours : 0;
         totalDeductedDays += att.deductedDays || 0;
         if (att.attendanceStatus === 'إجازة سنوية') totalAnnualLeaveDays++;
         if (att.attendanceStatus === 'إجازة مرضية') {
           totalSickLeaveDeduction += att.deductedDays || 0;
-          totalSickLeaveDays++; // حساب عدد الأيام المرضية
+          totalSickLeaveDays++;
         }
         if (att.leaveAllowance === 'نعم') totalLeaveAllowance += 1;
       }
 
-      const adjustment = await SalaryAdjustment.findOne({ employeeCode: user.employeeCode, month: `${year}-${month.padStart(2, '0')}` }) || {
-        occasionBonus: 0,
-        totalViolations: 0,
-        deductionViolationsInstallment: 0,
-        totalAdvances: 0,
-        deductionAdvancesInstallment: 0,
+      const adjustment = user.salaryAdjustments.get(monthYear) || {
+        totalViolations: user.violationTotal || 0,
+        deductionViolationsInstallment: user.violationInstallment || 0,
+        totalAdvances: user.advanceTotal || 0,
+        deductionAdvancesInstallment: user.advanceInstallment || 0,
+        occasionBonus: user.occasionBonus || 0
       };
 
-      // حساب خصم بدل الوجبة: 50 ريال لكل يوم غياب، إجازة سنوية، إجازة رسمية، أو إجازة مرضية
       const mealDeductionPerDay = 50;
       const mealDeductionDays = totalAbsentDays + totalAnnualLeaveDays + totalOfficialLeaveDays + totalSickLeaveDays;
       const mealDeduction = roundNumber(Math.min(mealDeductionDays * mealDeductionPerDay, user.mealAllowance));
@@ -186,15 +280,13 @@ router.get('/monthly-salary-report', async (req, res) => {
       const dailyRate = roundNumber(user.basicSalary / 30);
       const hourlyRate = roundNumber(user.basicSalary / (30 * shift.baseHours));
 
-      // التحقق من نوع الخصم
       const hasMinutesDeduction = shift.deductions ? shift.deductions.some(d => d.type === 'minutes') : false;
       const deductedDaysAmount = roundNumber(totalDeductedDays * dailyRate);
       const deductedHoursAmount = hasMinutesDeduction ? roundNumber(totalDeductedHours * hourlyRate) : 0;
       const sickDeductionAmount = roundNumber(totalSickLeaveDeduction * dailyRate);
-      const overtimeAmount = roundNumber(totalOvertimeHours * hourlyRate); // استخدام الساعة العادية
+      const overtimeAmount = roundNumber(totalOvertimeHours * hourlyRate);
       const leaveAllowanceAmount = roundNumber(totalLeaveAllowance * dailyRate);
 
-      // إجمالي قيمة الخصومات
       const totalDeductions = roundNumber(
         user.medicalInsurance +
         user.socialInsurance +
@@ -206,7 +298,6 @@ router.get('/monthly-salary-report', async (req, res) => {
         mealDeduction
       );
 
-      // إجمالي الإضافي
       const totalAdditions = roundNumber(
         user.basicSalary +
         user.mealAllowance +
@@ -215,7 +306,6 @@ router.get('/monthly-salary-report', async (req, res) => {
         leaveAllowanceAmount
       );
 
-      // الصافي
       const net = roundNumber(totalAdditions - totalDeductions);
 
       reports.push({
@@ -246,7 +336,7 @@ router.get('/monthly-salary-report', async (req, res) => {
         deductionAdvancesInstallment: roundNumber(adjustment.deductionAdvancesInstallment),
         totalDeductions: totalDeductions,
         totalAdditions: totalAdditions,
-        netSalary: net,
+        netSalary: net
       });
     }
 
@@ -255,7 +345,7 @@ router.get('/monthly-salary-report', async (req, res) => {
     console.error('Error in GET /monthly-salary-report:', {
       message: err.message,
       stack: err.stack,
-      query: req.query,
+      query: req.query
     });
     res.status(500).json({ success: false, message: `حدث خطأ: ${err.message}` });
   }

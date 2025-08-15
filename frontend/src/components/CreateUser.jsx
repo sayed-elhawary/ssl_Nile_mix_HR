@@ -40,7 +40,7 @@ function CreateUser() {
   const [socialInsurance, setSocialInsurance] = useState('');
   const [mealAllowance, setMealAllowance] = useState('');
   const [shiftType, setShiftType] = useState('');
-  const [workDays, setWorkDays] = useState(''); // حالة لعرض workDays (للقراءة فقط)
+  const [workDays, setWorkDays] = useState(''); // حالة لعرض workDays
   const [annualLeaveBalance, setAnnualLeaveBalance] = useState('');
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,15 @@ function CreateUser() {
     const selectedShiftId = e.target.value;
     setShiftType(selectedShiftId);
     const selectedShift = shifts.find((shift) => shift._id === selectedShiftId);
-    setWorkDays(selectedShift ? selectedShift.workDays || '' : ''); // تحديث workDays بناءً على الشيفت
+    if (selectedShift) {
+      // لو workDays هو array، خد طوله، وإلا استخدم القيمة مباشرة
+      const workDaysValue = Array.isArray(selectedShift.workDays)
+        ? selectedShift.workDays.length
+        : selectedShift.workDays || 30; // قيمة افتراضية 30 لو مفيش workDays
+      setWorkDays(workDaysValue.toString());
+    } else {
+      setWorkDays('');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -91,23 +99,23 @@ function CreateUser() {
           password,
           name,
           department,
-          basicSalary,
-          basicBonus,
-          bonusPercentage,
-          medicalInsurance,
-          socialInsurance,
-          mealAllowance,
+          basicSalary: parseFloat(basicSalary),
+          basicBonus: parseFloat(basicBonus),
+          bonusPercentage: parseFloat(bonusPercentage),
+          medicalInsurance: parseFloat(medicalInsurance),
+          socialInsurance: parseFloat(socialInsurance),
+          mealAllowance: parseFloat(mealAllowance),
           shiftType,
-          workDays, // إرسال workDays المستمد من الشيفت
-          annualLeaveBalance,
-          netSalary,
+          workDays: parseInt(workDays), // تحويل workDays إلى رقم
+          annualLeaveBalance: parseFloat(annualLeaveBalance),
+          netSalary: parseFloat(netSalary),
         }),
       });
       const data = await response.json();
       if (data.success) {
         setShowSuccessAnimation(true);
         setSuccessMessage('تم إنشاء الحساب بنجاح');
-        setTimeout(() => setShowSuccessAnimation(false), 1500); // تقليل وقت الانتظار لتحسين الأداء
+        setTimeout(() => setShowSuccessAnimation(false), 1500);
         setEmployeeCode('');
         setPassword('');
         setName('');
@@ -119,7 +127,7 @@ function CreateUser() {
         setSocialInsurance('');
         setMealAllowance('');
         setShiftType('');
-        setWorkDays(''); // إعادة تعيين workDays
+        setWorkDays('');
         setAnnualLeaveBalance('');
       } else {
         setError(data.message || 'حدث خطأ أثناء إنشاء الحساب');

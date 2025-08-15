@@ -16,11 +16,24 @@ const userSchema = new mongoose.Schema({
   annualLeaveBalance: { type: Number, required: true },
   netSalary: { type: Number, required: true },
   remainingGracePeriod: { type: Number, default: 0 },
+  // الحقول القديمة كـ fallback
   violationTotal: { type: Number, default: 0 },
   violationInstallment: { type: Number, default: 0 },
   advanceTotal: { type: Number, default: 0 },
   advanceInstallment: { type: Number, default: 0 },
   occasionBonus: { type: Number, default: 0 },
+  // حقل جديد لتخزين التعديلات حسب الشهر
+  salaryAdjustments: {
+    type: Map,
+    of: {
+      totalViolations: { type: Number, default: 0 },
+      deductionViolationsInstallment: { type: Number, default: 0 },
+      totalAdvances: { type: Number, default: 0 },
+      deductionAdvancesInstallment: { type: Number, default: 0 },
+      occasionBonus: { type: Number, default: 0 }
+    },
+    default: {}
+  }
 });
 
 module.exports = mongoose.model('User', userSchema);

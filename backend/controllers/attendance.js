@@ -1486,6 +1486,59 @@ exports.applySickLeave = async (req, res) => {
     return res.status(500).json({ success: false, message: 'حدث خطأ أثناء تطبيق الإجازة المرضية', error: error.message });
   }
 };
+
+// الـ route الجديد لتعديل تعديلات الراتب (المخالفات والسلف)
+exports.updateSalaryAdjustment = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'غير مصرح: التوكن غير موجود' });
+    }
+
+    try {
+      jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'انتهت صلاحية التوكن، يرجى تسجيل الدخول مرة أخرى' });
+      }
+      return res.status(401).json({ success: false, message: 'التوكن غير صالح', error: err.message });
+    }
+
+    const { employeeCode, monthYear } = req.params;
+    const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment } = req.body;
+
+    if (!employeeCode || !monthYear) {
+      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان' });
+    }
+
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'الموظف غير موجود' });
+    }
+
+    if (!user.salaryAdjustments) {
+      user.salaryAdjustments = {};
+    }
+
+    user.salaryAdjustments[monthYear] = {
+      totalViolations: totalViolations || 0,
+      deductionViolationsInstallment: deductionViolationsInstallment || 0,
+      totalAdvances: totalAdvances || 0,
+      deductionAdvancesInstallment: deductionAdvancesInstallment || 0,
+    };
+
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'تم تعديل تعديلات الراتب بنجاح' });
+  } catch (error) {
+    console.error('خطأ في updateSalaryAdjustment:', error.stack);
+    return res.status(500).json({ success: false, message: 'حدث خطأ أثناء التعديل', error: error.message });
+  }
+};
+
+// دالة لجلب تقرير الرواتب الشهري (معدلة لتشمل المخالفات والسلف)
+//
+//
 exports.getMonthlySalaryReport = async (req, res) => {
   try {
     const { startDate, endDate, employeeCode, shiftId } = req.query;
@@ -1498,6 +1551,8 @@ exports.getMonthlySalaryReport = async (req, res) => {
     if (new Date(end) < new Date(start)) {
       return res.status(400).json({ success: false, message: 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' });
     }
+
+    const monthYear = `${start.split('-')[0]}-${start.split('-')[1]}`; // مثل "2025-08"
 
     let userFilter = {};
     if (employeeCode) userFilter.employeeCode = employeeCode;
@@ -1554,6 +1609,12 @@ exports.getMonthlySalaryReport = async (req, res) => {
 
     const report = [];
     for (const user of users) {
+      // التحقق من shiftType
+      if (!user.shiftType) {
+        console.error(`User ${user.employeeCode} has no valid shiftType`);
+        continue; // تخطي الموظف لو مافيش shiftType صالح
+      }
+
       const totals = attendanceTotals.find(t => t._id === user.employeeCode) || {
         totalAttendanceDays: 0,
         totalWeeklyOffDays: 0,
@@ -1568,11 +1629,6 @@ exports.getMonthlySalaryReport = async (req, res) => {
       };
 
       const shift = user.shiftType;
-      if (!shift) {
-        console.error(`Shift not found for user ${user.employeeCode}`);
-        continue;
-      }
-
       const hasMinutesDeduction = shift.deductions ? shift.deductions.some(d => d.type === 'minutes') : false;
 
       const dailySalary = user.basicSalary / 30;
@@ -1582,10 +1638,18 @@ exports.getMonthlySalaryReport = async (req, res) => {
         ? totals.totalDeductedHours * hourlySalary
         : totals.totalDeductedDays * dailySalary;
 
-      const totalSalary = (totals.totalAttendanceDays * dailySalary) +
-        overtimePay -
-        deductedPay -
-        (totals.totalSickLeaveDeduction * dailySalary);
+      // جلب تعديلات الراتب
+      const adjustment = user.salaryAdjustments?.[monthYear] || {
+        totalViolations: 0,
+        deductionViolationsInstallment: 0,
+        totalAdvances: 0,
+        deductionAdvancesInstallment: 0
+      };
+
+      // حساب إجمالي الخصومات والإضافات والصافي
+      const totalDeductions = deductedPay + adjustment.deductionViolationsInstallment + adjustment.deductionAdvancesInstallment + (totals.totalSickLeaveDeduction * dailySalary);
+      const totalAdditions = overtimePay;
+      const netSalary = (totals.totalAttendanceDays * dailySalary) + totalAdditions - totalDeductions;
 
       report.push({
         employeeCode: user.employeeCode,
@@ -1607,7 +1671,13 @@ exports.getMonthlySalaryReport = async (req, res) => {
         hourlySalary: roundNumber(hourlySalary, 2),
         overtimePay: roundNumber(overtimePay, 2),
         deductedPay: roundNumber(deductedPay, 2),
-        totalSalary: roundNumber(totalSalary, 2)
+        totalViolations: adjustment.totalViolations,
+        deductionViolationsInstallment: adjustment.deductionViolationsInstallment,
+        totalAdvances: adjustment.totalAdvances,
+        deductionAdvancesInstallment: adjustment.deductionAdvancesInstallment,
+        totalDeductions: roundNumber(totalDeductions, 2),
+        totalAdditions: roundNumber(totalAdditions, 2),
+        netSalary: roundNumber(netSalary, 2)
       });
     }
 
