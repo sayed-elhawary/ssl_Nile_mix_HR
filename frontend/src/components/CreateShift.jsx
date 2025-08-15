@@ -1,5 +1,27 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const dayMap = {
+  'الأحد': 0,
+  'الإثنين': 1,
+  'الثلاثاء': 2,
+  'الأربعاء': 3,
+  'الخميس': 4,
+  'الجمعة': 5,
+  'السبت': 6,
+};
+
+const CustomLoadingSpinner = () => (
+  <motion.div
+    className="flex items-center justify-center"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1, transition: { duration: 0.4 } }}
+    exit={{ opacity: 0, transition: { duration: 0.4 } }}
+  >
+    <div className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
+  </motion.div>
+);
 
 function CreateShift() {
   const [shiftType, setShiftType] = useState('morning');
@@ -14,6 +36,7 @@ function CreateShift() {
   const [sickLeaveDeduction, setSickLeaveDeduction] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const calculateOvertimeEndTime = () => {
     if ((shiftType === 'morning' || shiftType === 'evening') && endTime && maxOvertimeHours) {
@@ -51,7 +74,7 @@ function CreateShift() {
     const newDeductions = [...deductions];
     newDeductions[index][field] = value;
     if (shiftType === '24/24' && field === 'duration') {
-      newDeductions[index].deductionAmount = value; // يساوي duration تلقائيًا
+      newDeductions[index].deductionAmount = value;
     }
     setDeductions(newDeductions);
   };
@@ -64,6 +87,7 @@ function CreateShift() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
     try {
       if (Number(baseHours) <= 0) {
         setError('الساعات الأساسية يجب أن تكون قيمة إيجابية');
@@ -84,7 +108,7 @@ function CreateShift() {
           end.setDate(end.getDate() + 1);
         }
         const calculatedBaseHours = (end - start) / (1000 * 60 * 60);
-        if (calculatedBaseHours !== Number(baseHours)) {
+        if (Math.abs(calculatedBaseHours - Number(baseHours)) > 0.01) {
           setError('الساعات الأساسية يجب أن تتطابق مع الفرق بين وقت البداية والنهاية');
           setLoading(false);
           return;
@@ -122,6 +146,9 @@ function CreateShift() {
           }
         }
       }
+
+      const workDaysNumbers = workDays.map(day => dayMap[day]);
+
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,7 +160,7 @@ function CreateShift() {
           endTime: shiftType === 'morning' || shiftType === 'evening' ? endTime : null,
           isCrossDay: shiftType === 'evening',
           maxOvertimeHours: maxOvertimeHours || 0,
-          workDays,
+          workDays: workDaysNumbers,
           gracePeriod,
           deductions,
           sickLeaveDeduction,
@@ -141,7 +168,7 @@ function CreateShift() {
       });
       const data = await response.json();
       if (data.success) {
-        alert('تم إنشاء الشيفت بنجاح');
+        setSuccessMessage('تم إنشاء الشيفت بنجاح');
         setShiftType('morning');
         setShiftName('');
         setBaseHours('');
@@ -163,265 +190,297 @@ function CreateShift() {
   };
 
   const formVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 50 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 4px 20px rgba(147, 51, 234, 0.3)', transition: { duration: 0.3 } },
-    tap: { scale: 0.95, backgroundColor: '#EDE9FE', transition: { duration: 0.3 } },
+    hover: { scale: 1.03, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.2)', transition: { duration: 0.3 } },
+    tap: { scale: 0.98, backgroundColor: '#A78BFA', transition: { duration: 0.3 } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4 sm:p-6 font-noto-sans-arabic relative overflow-hidden">
-      <div className="absolute inset-0 bg-pattern opacity-20"></div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-4 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="container mx-auto relative z-10 max-w-md sm:max-w-lg md:max-w-2xl"
+        className="container mx-auto relative z-10 max-w-7xl bg-white rounded-3xl shadow-lg p-6 md:p-8 border border-purple-100 backdrop-blur-sm bg-opacity-90"
       >
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-purple-700 mb-6 sm:mb-8 text-right">
+        <h2 className="text-3xl font-extrabold text-purple-600 mb-6 text-right tracking-wide drop-shadow-sm">
           إنشاء شيفت جديد
         </h2>
-        {error && <p className="text-red-500 mb-4 text-sm sm:text-base text-right">{error}</p>}
-        <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">نوع الشيفت</label>
-            <select
-              value={shiftType}
-              onChange={(e) => {
-                setShiftType(e.target.value);
-                setStartTime('');
-                setEndTime('');
-                setBaseHours('');
-                setDeductions([]);
-              }}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-              required
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
             >
-              <option value="morning">صباحي</option>
-              <option value="evening">مسائي</option>
-              <option value="24/24">24/24</option>
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">اسم الشيفت</label>
-            <input
-              type="text"
-              value={shiftName}
-              onChange={(e) => setShiftName(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">الساعات الأساسية</label>
-            <input
-              type="number"
-              value={baseHours}
-              onChange={(e) => setBaseHours(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-              required
-            />
-          </div>
-          {(shiftType === 'morning' || shiftType === 'evening') && (
-            <>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">وقت بداية الشيفت</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">وقت نهاية الشيفت</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                  required
-                />
-              </div>
-            </>
+              {error}
+            </motion.div>
           )}
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">الحد الأقصى للساعات الإضافية</label>
-            <input
-              type="number"
-              value={maxOvertimeHours}
-              onChange={(e) => setMaxOvertimeHours(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-              placeholder={shiftType === '24/24' ? 'مطلوب' : 'اختياري'}
-              required={shiftType === '24/24'}
-            />
-          </div>
-          {(shiftType === 'morning' || shiftType === 'evening') && maxOvertimeHours && (
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">وقت نهاية الشيفت الإضافي</label>
+          {successMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-purple-50 border border-purple-200 text-purple-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
+            >
+              {successMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md p-6 border border-purple-100 backdrop-blur-sm bg-opacity-90">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                نوع الشيفت
+              </label>
+              <select
+                value={shiftType}
+                onChange={(e) => {
+                  setShiftType(e.target.value);
+                  setStartTime('');
+                  setEndTime('');
+                  setBaseHours('');
+                  setDeductions([]);
+                }}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                required
+              >
+                <option value="morning">صباحي</option>
+                <option value="evening">مسائي</option>
+                <option value="24/24">24/24</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                اسم الشيفت
+              </label>
               <input
                 type="text"
-                value={calculateOvertimeEndTime()}
-                readOnly
-                className="w-full p-2 border rounded-lg bg-gray-100 text-sm sm:text-base"
+                value={shiftName}
+                onChange={(e) => setShiftName(e.target.value)}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                required
               />
             </div>
-          )}
-          {shiftType === '24/24' && Number(baseHours) + Number(maxOvertimeHours) > 24 && (
-            <div className="mb-4">
-              <p className="text-gray-500 text-xs sm:text-sm">
-                ملاحظة: مجموع الساعات الأساسية والإضافية ({Number(baseHours) + Number(maxOvertimeHours)} ساعة) يتجاوز 24 ساعة، لذا قد يمتد الشيفت عبر يومين.
-              </p>
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                الساعات الأساسية
+              </label>
+              <input
+                type="number"
+                value={baseHours}
+                onChange={(e) => setBaseHours(e.target.value)}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                required
+              />
             </div>
-          )}
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">أيام العمل</label>
-            <div className="grid grid-cols-2 gap-2">
-              {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((day) => (
-                <div key={day} className="flex items-center">
+            {(shiftType === 'morning' || shiftType === 'evening') && (
+              <>
+                <div>
+                  <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                    وقت بداية الشيفت
+                  </label>
                   <input
-                    type="checkbox"
-                    value={day}
-                    onChange={handleWorkDaysChange}
-                    className="mr-2 h-5 w-5 text-purple-500 focus:ring-purple-500"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    required
                   />
-                  <label className="text-gray-700 text-sm sm:text-base">{day}</label>
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                    وقت نهاية الشيفت
+                  </label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    required
+                  />
+                </div>
+              </>
+            )}
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                الحد الأقصى للساعات الإضافية
+              </label>
+              <input
+                type="number"
+                value={maxOvertimeHours}
+                onChange={(e) => setMaxOvertimeHours(e.target.value)}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                placeholder={shiftType === '24/24' ? 'مطلوب' : 'اختياري'}
+                required={shiftType === '24/24'}
+              />
+            </div>
+            {(shiftType === 'morning' || shiftType === 'evening') && maxOvertimeHours && (
+              <div>
+                <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                  وقت نهاية الشيفت الإضافي
+                </label>
+                <input
+                  type="text"
+                  value={calculateOvertimeEndTime()}
+                  readOnly
+                  className="w-full p-3 border border-purple-200 rounded-2xl bg-gray-100 text-sm shadow-sm"
+                />
+              </div>
+            )}
+            {shiftType === '24/24' && Number(baseHours) + Number(maxOvertimeHours) > 24 && (
+              <div className="col-span-1 md:col-span-2">
+                <p className="text-gray-500 text-xs text-right">
+                  ملاحظة: مجموع الساعات الأساسية والإضافية ({Number(baseHours) + Number(maxOvertimeHours)} ساعة) يتجاوز 24 ساعة، لذا قد يمتد الشيفت عبر يومين.
+                </p>
+              </div>
+            )}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                أيام العمل
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((day) => (
+                  <label key={day} className="flex items-center space-x-2 space-x-reverse">
+                    <input
+                      type="checkbox"
+                      value={day}
+                      onChange={handleWorkDaysChange}
+                      className="form-checkbox h-5 w-5 text-purple-500 focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-600">{day}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                فترة السماح (بالدقائق)
+              </label>
+              <input
+                type="number"
+                value={gracePeriod}
+                onChange={(e) => setGracePeriod(e.target.value)}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                required
+              />
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                {shiftType === '24/24' ? 'خصومات الخروج المبكر' : 'خصومات التأخير'}
+              </label>
+              {shiftType === '24/24' && (
+                <p className="text-gray-500 text-xs text-right mb-2">
+                  أدخل مدة الوقت الناقص عن الساعات الأساسية ومقدار الخصم بالدقائق (مثال: إذا خرج بعد 8 ساعات، أدخل 60 دقيقة ناقصة و60 دقيقة خصم).
+                </p>
+              )}
+              {deductions.map((deduction, index) => (
+                <div key={index} className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 sm:space-x-reverse mb-4">
+                  {(shiftType === 'morning' || shiftType === 'evening') ? (
+                    <>
+                      <input
+                        type="time"
+                        value={deduction.start}
+                        onChange={(e) => updateDeduction(index, 'start', e.target.value)}
+                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        placeholder="من (الوقت)"
+                        required
+                      />
+                      <input
+                        type="time"
+                        value={deduction.end}
+                        onChange={(e) => updateDeduction(index, 'end', e.target.value)}
+                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        placeholder="إلى (الوقت)"
+                        required
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        type="number"
+                        value={deduction.duration}
+                        onChange={(e) => updateDeduction(index, 'duration', e.target.value)}
+                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        placeholder="مدة النقص (دقائق)"
+                        required
+                      />
+                      <input
+                        type="number"
+                        value={deduction.deductionAmount}
+                        onChange={(e) => updateDeduction(index, 'deductionAmount', e.target.value)}
+                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        placeholder="مقدار الخصم (دقائق)"
+                        required
+                      />
+                    </>
+                  )}
+                  <select
+                    value={deduction.type}
+                    onChange={(e) => updateDeduction(index, 'type', e.target.value)}
+                    className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    required
+                  >
+                    <option value="">اختر نوع الخصم</option>
+                    <option value="quarter">ربع يوم</option>
+                    <option value="half">نص يوم</option>
+                    <option value="full">يوم كامل</option>
+                    <option value="minutes">بالدقائق</option>
+                  </select>
+                  <motion.button
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                    type="button"
+                    onClick={() => removeDeduction(index)}
+                    className="w-full sm:w-auto bg-red-600 text-white p-3 rounded-2xl hover:bg-red-700 transition duration-300 font-medium text-sm shadow-sm"
+                  >
+                    حذف
+                  </motion.button>
                 </div>
               ))}
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                type="button"
+                onClick={addDeduction}
+                className="mt-2 w-full sm:w-auto bg-green-600 text-white p-3 rounded-2xl hover:bg-green-700 transition duration-300 font-medium text-sm shadow-sm"
+              >
+                إضافة خصم جديد
+              </motion.button>
             </div>
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">فترة السماح (بالدقائق)</label>
-            <input
-              type="number"
-              value={gracePeriod}
-              onChange={(e) => setGracePeriod(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">
-              {shiftType === '24/24' ? 'خصومات الخروج المبكر' : 'خصومات التأخير'}
-            </label>
-            {shiftType === '24/24' && (
-              <p className="text-gray-500 text-xs sm:text-sm mb-2">
-                أدخل مدة الوقت الناقص عن الساعات الأساسية ومقدار الخصم بالدقائق (مثال: إذا خرج بعد 8 ساعات، أدخل 60 دقيقة ناقصة و60 دقيقة خصم).
-              </p>
-            )}
-            {deductions.map((deduction, index) => (
-              <div key={index} className="flex items-center space-x-4 space-x-reverse mb-2">
-                {(shiftType === 'morning' || shiftType === 'evening') ? (
-                  <>
-                    <input
-                      type="time"
-                      value={deduction.start}
-                      onChange={(e) => updateDeduction(index, 'start', e.target.value)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                      placeholder="من (الوقت)"
-                      required
-                    />
-                    <input
-                      type="time"
-                      value={deduction.end}
-                      onChange={(e) => updateDeduction(index, 'end', e.target.value)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                      placeholder="إلى (الوقت)"
-                      required
-                    />
-                  </>
-                ) : (
-                  <>
-                    <input
-                      type="number"
-                      value={deduction.duration}
-                      onChange={(e) => updateDeduction(index, 'duration', e.target.value)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                      placeholder="مدة النقص (دقائق)"
-                      required
-                    />
-                    <input
-                      type="number"
-                      value={deduction.deductionAmount}
-                      onChange={(e) => updateDeduction(index, 'deductionAmount', e.target.value)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                      placeholder="مقدار الخصم (دقائق)"
-                      required
-                    />
-                  </>
-                )}
-                <select
-                  value={deduction.type}
-                  onChange={(e) => updateDeduction(index, 'type', e.target.value)}
-                  className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-                  required
-                >
-                  <option value="">اختر نوع الخصم</option>
-                  <option value="quarter">ربع يوم</option>
-                  <option value="half">نص يوم</option>
-                  <option value="full">يوم كامل</option>
-                  <option value="minutes">بالدقائق</option>
-                </select>
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  type="button"
-                  onClick={() => removeDeduction(index)}
-                  className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition duration-300 text-sm sm:text-base"
-                >
-                  حذف
-                </motion.button>
-              </div>
-            ))}
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              type="button"
-              onClick={addDeduction}
-              className="mt-2 bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition duration-300 text-sm sm:text-base"
-            >
-              إضافة خصم جديد
-            </motion.button>
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm sm:text-base font-medium mb-2">خصم الإجازة المرضية</label>
-            <select
-              value={sickLeaveDeduction}
-              onChange={(e) => setSickLeaveDeduction(e.target.value)}
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-sm sm:text-base"
-            >
-              <option value="">اختر</option>
-              <option value="none">بدون خصم</option>
-              <option value="quarter">ربع يوم</option>
-              <option value="half">نص يوم</option>
-              <option value="full">يوم كامل</option>
-            </select>
+            <div>
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                خصم الإجازة المرضية
+              </label>
+              <select
+                value={sickLeaveDeduction}
+                onChange={(e) => setSickLeaveDeduction(e.target.value)}
+                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              >
+                <option value="">اختر</option>
+                <option value="none">بدون خصم</option>
+                <option value="quarter">ربع يوم</option>
+                <option value="half">نص يوم</option>
+                <option value="full">يوم كامل</option>
+              </select>
+            </div>
           </div>
           <motion.button
             variants={buttonVariants}
             whileHover="hover"
             whileTap="tap"
             type="submit"
-            className="w-full bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 transition duration-300 text-sm sm:text-base font-semibold"
+            className="mt-6 w-full bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 font-medium text-sm shadow-md"
             disabled={loading}
           >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                جارٍ التحميل...
-              </div>
-            ) : (
-              'إنشاء الشيفت'
-            )}
+            {loading ? <CustomLoadingSpinner /> : 'إنشاء الشيفت'}
           </motion.button>
         </form>
       </motion.div>

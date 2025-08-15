@@ -149,7 +149,6 @@ router.get('/monthly-salary-report', async (req, res) => {
       let totalDeductedDays = 0;
       let totalAnnualLeaveDays = 0;
       let totalSickLeaveDeduction = 0;
-      let totalSickLeaveDays = 0; // إضافة متغير جديد لعدد أيام الإجازة المرضية
       let totalLeaveAllowance = 0;
 
       for (const att of attendances) {
@@ -162,10 +161,7 @@ router.get('/monthly-salary-report', async (req, res) => {
         totalDeductedHours += (att.deductedHours && att.deductedHours < 100) ? att.deductedHours : 0;
         totalDeductedDays += att.deductedDays || 0;
         if (att.attendanceStatus === 'إجازة سنوية') totalAnnualLeaveDays++;
-        if (att.attendanceStatus === 'إجازة مرضية') {
-          totalSickLeaveDeduction += att.deductedDays || 0;
-          totalSickLeaveDays++; // حساب عدد الأيام المرضية
-        }
+        if (att.attendanceStatus === 'إجازة مرضية') totalSickLeaveDeduction += att.deductedDays || 0;
         if (att.leaveAllowance === 'نعم') totalLeaveAllowance += 1;
       }
 
@@ -177,9 +173,9 @@ router.get('/monthly-salary-report', async (req, res) => {
         deductionAdvancesInstallment: 0,
       };
 
-      // حساب خصم بدل الوجبة: 50 ريال لكل يوم غياب، إجازة سنوية، إجازة رسمية، أو إجازة مرضية
+      // حساب خصم بدل الوجبة: 50 ريال لكل يوم غياب، إجازة سنوية، أو إجازة رسمية
       const mealDeductionPerDay = 50;
-      const mealDeductionDays = totalAbsentDays + totalAnnualLeaveDays + totalOfficialLeaveDays + totalSickLeaveDays;
+      const mealDeductionDays = totalAbsentDays + totalAnnualLeaveDays + totalOfficialLeaveDays;
       const mealDeduction = roundNumber(Math.min(mealDeductionDays * mealDeductionPerDay, user.mealAllowance));
       const remainingMealAllowance = roundNumber(user.mealAllowance - mealDeduction);
 

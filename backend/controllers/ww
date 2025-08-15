@@ -838,7 +838,7 @@ exports.deleteAllAttendance = async (req, res) => {
   }
 };
 
-// دالة لتعديل سجل حضور (هنا التعديل الرئيسي)
+// دالة لتعديل سجل حضور
 exports.updateAttendance = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
@@ -930,6 +930,7 @@ exports.updateAttendance = async (req, res) => {
     attendance.leaveAllowance = leaveAllowance || 'لا يوجد';
     attendance.shiftName = shift.shiftName;
     attendance.leaveBalance = newLeaveBalance;
+    attendance.deductedDays = attendanceStatus === 'إجازة مرضية' ? deductedDays : 0;
     attendance.sickLeaveDeduction = attendanceStatus === 'إجازة مرضية' ? shift.sickLeaveDeduction || 'quarter' : 'none';
     attendance.workDays = shift.workDays || [];
 
@@ -938,6 +939,7 @@ exports.updateAttendance = async (req, res) => {
     } else {
       if (!attendance.checkIn && !attendance.checkOut) {
         attendance.attendanceStatus = isWeeklyOffDay(attendance.date, shift.workDays) ? 'إجازة أسبوعية' : 'غائب';
+        attendance.deductedDays = isWeeklyOffDay(attendance.date, shift.workDays) ? 0 : 1;
       } else {
         attendance.attendanceStatus = 'حاضر';
       }
@@ -1028,14 +1030,7 @@ exports.updateAttendance = async (req, res) => {
       attendance.isCrossDay = isShiftCrossDay(shift);
       attendance.deductedHours = 0;
       attendance.overtimeHours = 0;
-      // التعديل الرئيسي هنا: نعين deductedDays = 0 للإجازات المدفوعة (سنوية، رسمية، أسبوعية)، وخصم للمرضية، و1 للغياب
-      if (attendanceStatus === 'إجازة مرضية') {
-        attendance.deductedDays = deductedDays; // deductedDays محسبة فوق للمرضية
-      } else if (['إجازة سنوية', 'إجازة رسمية', 'إجازة أسبوعية'].includes(attendanceStatus)) {
-        attendance.deductedDays = 0; // لا خصم للسنوية أو الرسمية أو الأسبوعية
-      } else {
-        attendance.deductedDays = 1; // للغياب
-      }
+      attendance.deductedDays = attendanceStatus === 'إجازة مرضية' ? deductedDays : (isWeeklyOffDay(attendance.date, shift.workDays) ? 0 : 1);
     }
 
     await attendance.save();
@@ -1330,7 +1325,7 @@ exports.applyAnnualLeave = async (req, res) => {
           remainingGracePeriod,
           deductedHours: 0,
           overtimeHours: 0,
-          deductedDays: 0,  // تأكيد: 0 للسنوية
+          deductedDays: 0,
           leaveAllowance: 'لا يوجد',
           sickLeaveDeduction: 'none',
           isCrossDay: isShiftCrossDay(shift),

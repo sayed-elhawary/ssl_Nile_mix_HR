@@ -11,8 +11,8 @@ const shiftSchema = new mongoose.Schema({
     type: String,
     required: function() { return this.shiftType === 'morning' || this.shiftType === 'evening'; } // مطلوب للصباحي والمسائي
   },
-  isCrossDay: { 
-    type: Boolean, 
+  isCrossDay: {
+    type: Boolean,
     default: function() { return this.shiftType === 'evening'; } // افتراضي true للشيفت المسائي
   }, // إضافة حقل لتحديد ما إذا كان الشيفت يمتد عبر يومين
   baseHours: { type: Number, required: true }, // ساعات العمل الأساسية
@@ -21,7 +21,8 @@ const shiftSchema = new mongoose.Schema({
     required: function() { return this.shiftType === '24/24'; },
     default: function() { return this.shiftType === '24/24' ? 20 : 5; } // 20 لـ 24/24، 5 للصباحي/المسائي
   },
-  workDays: { type: [String], required: true }, // أيام العمل
+  // ✅ أيام العمل كأرقام من 0 إلى 6
+  workDays: { type: [Number], required: true }, // أيام العمل
   gracePeriod: { type: Number, required: true }, // فترة السماح
   deductions: [{
     start: {
@@ -47,3 +48,4 @@ const shiftSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Shift', shiftSchema);
+

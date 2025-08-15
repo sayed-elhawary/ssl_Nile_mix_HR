@@ -8,6 +8,7 @@ import CreateUser from './components/CreateUser';
 import EditUser from './components/EditUser';
 import Settings from './components/Settings';
 import AttendanceUpload from './components/AttendanceUpload';
+import MonthlySalaryReport from './components/MonthlySalaryReport';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
@@ -44,6 +45,10 @@ function App() {
           <Route
             path="/attendance-upload"
             element={isAuthenticated ? <AttendanceUpload isAuthenticated={isAuthenticated} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/monthly-salary-report"
+            element={isAuthenticated ? <MonthlySalaryReport /> : <Navigate to="/login" />}
           />
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
         </Routes>

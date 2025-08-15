@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema({
   bonusPercentage: { type: Number, required: true },
   annualLeaveBalance: { type: Number, required: true },
   netSalary: { type: Number, required: true },
+  remainingGracePeriod: { type: Number, default: 0 },
+  violationTotal: { type: Number, default: 0 },
+  violationInstallment: { type: Number, default: 0 },
+  advanceTotal: { type: Number, default: 0 },
+  advanceInstallment: { type: Number, default: 0 },
+  occasionBonus: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model('User', userSchema);

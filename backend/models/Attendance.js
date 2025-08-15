@@ -11,7 +11,7 @@ const attendanceSchema = new mongoose.Schema({
   shiftType: { type: String, enum: ['morning', 'evening', '24/24'], required: true },
   isCrossDay: { type: Boolean, default: false },
   shiftName: { type: String, required: true },
-  workDays: { type: [String], required: true },
+  workDays: { type: [Number], required: true },
   delayMinutes: { type: Number, default: 0 },
   gracePeriod: { type: Number, required: true },
   remainingGracePeriod: { type: Number, default: 0 },

@@ -14,7 +14,7 @@ const dayMap = {
 
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-16 lg:w-16"
+    className="relative h-10 w-10 sm:h-12 sm:w-12 md:h-16 md:w-16"
     initial={{ scale: 0, opacity: 0 }}
     animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
     exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
@@ -51,21 +51,6 @@ const CustomLoadingSpinner = () => (
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
     <span className="mr-2 sm:mr-3 text-purple-600 text-[10px] sm:text-xs md:text-sm font-medium">جارٍ التحميل...</span>
-  </motion.div>
-);
-
-const CustomButtonLoadingSpinner = () => (
-  <motion.div
-    className="inline-flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
-  >
-    <motion.div
-      className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
-    />
   </motion.div>
 );
 
@@ -715,7 +700,7 @@ function AttendanceUpload({ isAuthenticated }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-2 sm:p-4 md:p-6 font-noto-sans-arabic relative overflow-hidden dir=rtl">
+    <div className="min-h-screen bg-pattern p-2 sm:p-4 md:p-6 font-noto-sans-arabic relative overflow-hidden dir=rtl">
       <motion.div
         variants={formVariants}
         initial="hidden"
@@ -882,28 +867,28 @@ function AttendanceUpload({ isAuthenticated }) {
           </div>
         ) : filteredData.length > 0 ? (
           <>
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-x-auto snap-x">
-              <table className="min-w-[1500px] md:min-w-full w-full text-right text-[9px] sm:text-[10px] md:text-xs lg:text-[13px] table-auto md:table-fixed">
+            <div className="table-container bg-white rounded-2xl shadow-md border border-gray-100">
+              <table className="w-full text-right text-[8px] sm:text-[10px] md:text-xs lg:text-[13px] table-fixed">
                 <thead>
                   <tr className="bg-purple-600 text-white">
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">كود الموظف</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[12%] min-w-[70px] font-semibold">اسم الموظف</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[10%] min-w-[70px] font-semibold">تاريخ الحضور</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">وقت الحضور</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[10%] min-w-[70px] font-semibold">تاريخ الانصراف</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">وقت الانصراف</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">اسم الشيفت</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[60px] font-semibold">حالة الحضور</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">دقائق التأخير</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">بدل التأخير</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">خصم الساعات</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">ساعات إضافية</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">أيام مخصومة</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">رصيد الإجازة</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">بدل الإجازة</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">خصم المرضية</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">أيام العمل</th>
-                    <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">إجراءات</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[50px] font-semibold">كود الموظف</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[12%] min-w-[60px] sm:min-w-[80px] font-semibold">اسم الموظف</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[10%] min-w-[60px] sm:min-w-[80px] font-semibold">تاريخ الحضور</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[50px] font-semibold">وقت الحضور</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[10%] min-w-[60px] sm:min-w-[80px] font-semibold">تاريخ الانصراف</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[50px] font-semibold">وقت الانصراف</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[50px] font-semibold">اسم الشيفت</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[60px] font-semibold">حالة الحضور</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] font-semibold">دقائق التأخير</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] hidden sm:table-cell font-semibold">بدل التأخير</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] font-semibold">خصم الساعات</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] font-semibold">ساعات إضافية</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] hidden sm:table-cell font-semibold">أيام مخصومة</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] font-semibold">رصيد الإجازة</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] hidden sm:table-cell font-semibold">بدل الإجازة</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] hidden sm:table-cell font-semibold">خصم المرضية</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[6%] min-w-[30px] sm:min-w-[50px] font-semibold">أيام العمل</th>
+                    <th className="p-1 sm:p-2 md:p-3 w-[8%] min-w-[40px] sm:min-w-[50px] font-semibold">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -913,7 +898,7 @@ function AttendanceUpload({ isAuthenticated }) {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3 }}
-                      className={`border-b border-purple-100 hover:bg-purple-50 transition-all duration-200 snap-start ${
+                      className={`border-b border-purple-100 hover:bg-purple-50 transition-all duration-200 ${
                         record.attendanceStatus === 'إجازة أسبوعية'
                           ? 'bg-green-50'
                           : record.attendanceStatus === 'غائب'
@@ -925,30 +910,30 @@ function AttendanceUpload({ isAuthenticated }) {
                           : 'bg-gray-50'
                       }`}
                     >
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.employeeCode}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3" title={record.employeeName}>{record.employeeName}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.checkInDate}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.checkIn}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.checkOutDate}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.checkOut}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.shiftName}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.attendanceStatus}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.delayMinutes}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.remainingGracePeriod}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.deductedHours}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.overtimeHours}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.deductedDays}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.leaveBalance}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.leaveAllowance}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.sickLeaveDeduction}</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">{record.workDays.length} أيام</td>
-                      <td className="p-1.5 sm:p-2 md:p-3">
+                      <td className="p-1 sm:p-2 md:p-3 truncate">{record.employeeCode}</td>
+                      <td className="p-1 sm:p-2 md:p-3 truncate" title={record.employeeName}>{record.employeeName}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.checkInDate}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.checkIn}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.checkOutDate}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.checkOut}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.shiftName}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.attendanceStatus}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.delayMinutes}</td>
+                      <td className="p-1 sm:p-2 md:p-3 hidden sm:table-cell">{record.remainingGracePeriod}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.deductedHours}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.overtimeHours}</td>
+                      <td className="p-1 sm:p-2 md:p-3 hidden sm:table-cell">{record.deductedDays}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.leaveBalance}</td>
+                      <td className="p-1 sm:p-2 md:p-3 hidden sm:table-cell">{record.leaveAllowance}</td>
+                      <td className="p-1 sm:p-2 md:p-3 hidden sm:table-cell">{record.sickLeaveDeduction}</td>
+                      <td className="p-1 sm:p-2 md:p-3">{record.workDays.length} أيام</td>
+                      <td className="p-1 sm:p-2 md:p-3">
                         <motion.button
                           variants={buttonVariants}
                           whileHover="hover"
                           whileTap="tap"
                           onClick={() => openEditModal(record)}
-                          className="bg-purple-600 text-white px-2 sm:px-3 py-1 sm:py-1 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-semibold shadow-sm"
+                          className="bg-purple-600 text-white px-2 sm:px-3 py-1 sm:py-1 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[8px] sm:text-[10px] md:text-xs lg:text-sm font-semibold shadow-sm"
                         >
                           تعديل
                         </motion.button>
@@ -1067,7 +1052,7 @@ function AttendanceUpload({ isAuthenticated }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4 modal"
             >
               <motion.div
                 initial={{ scale: 0.8, y: 50 }}
@@ -1160,13 +1145,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">إجازة مرضية</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeEditModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1175,17 +1160,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleEditSubmit}
-                    className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ الحفظ...</span>
-                      </>
-                    ) : (
-                      'حفظ التعديلات'
-                    )}
+                    {loading ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
                   </motion.button>
                 </div>
               </motion.div>
@@ -1196,7 +1174,7 @@ function AttendanceUpload({ isAuthenticated }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4 modal"
             >
               <motion.div
                 initial={{ scale: 0.8, y: 50 }}
@@ -1255,13 +1233,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1270,29 +1248,21 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleOfficialLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة الرسمية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة الرسمية'}
                   </motion.button>
                 </div>
               </motion.div>
             </motion.div>
           )}
           {isAnnualLeaveModalOpen && (
-            <motion.div
-
-		     initial={{ opacity: 0 }}
+		  <motion.div
+              initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4 modal"
             >
               <motion.div
                 initial={{ scale: 0.8, y: 50 }}
@@ -1351,13 +1321,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1366,17 +1336,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleAnnualLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة السنوية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة السنوية'}
                   </motion.button>
                 </div>
               </motion.div>
@@ -1387,7 +1350,7 @@ function AttendanceUpload({ isAuthenticated }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4 modal"
             >
               <motion.div
                 initial={{ scale: 0.8, y: 50 }}
@@ -1446,13 +1409,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1461,17 +1424,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleSickLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة المرضية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة المرضية'}
                   </motion.button>
                 </div>
               </motion.div>

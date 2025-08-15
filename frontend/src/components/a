@@ -54,21 +54,6 @@ const CustomLoadingSpinner = () => (
   </motion.div>
 );
 
-const CustomButtonLoadingSpinner = () => (
-  <motion.div
-    className="inline-flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
-  >
-    <motion.div
-      className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
-    />
-  </motion.div>
-);
-
 function AttendanceUpload({ isAuthenticated }) {
   const [file, setFile] = useState(null);
   const [attendanceData, setAttendanceData] = useState([
@@ -1160,13 +1145,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">إجازة مرضية</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeEditModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1175,17 +1160,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleEditSubmit}
-                    className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ الحفظ...</span>
-                      </>
-                    ) : (
-                      'حفظ التعديلات'
-                    )}
+                    {loading ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
                   </motion.button>
                 </div>
               </motion.div>
@@ -1255,13 +1233,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1270,17 +1248,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleOfficialLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة الرسمية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة الرسمية'}
                   </motion.button>
                 </div>
               </motion.div>
@@ -1288,8 +1259,7 @@ function AttendanceUpload({ isAuthenticated }) {
           )}
           {isAnnualLeaveModalOpen && (
             <motion.div
-
-		     initial={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
@@ -1351,13 +1321,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1366,17 +1336,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleAnnualLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة السنوية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة السنوية'}
                   </motion.button>
                 </div>
               </motion.div>
@@ -1446,13 +1409,13 @@ function AttendanceUpload({ isAuthenticated }) {
                     <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
                   </label>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+                <div className="flex justify-between mt-3 sm:mt-4 space-x-2 sm:space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                   >
                     إلغاء
                   </motion.button>
@@ -1461,17 +1424,10 @@ function AttendanceUpload({ isAuthenticated }) {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleSickLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+                    className="bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold flex-1 shadow-sm"
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة المرضية'
-                    )}
+                    {loading ? 'جارٍ التطبيق...' : 'تطبيق الإجازة المرضية'}
                   </motion.button>
                 </div>
               </motion.div>
