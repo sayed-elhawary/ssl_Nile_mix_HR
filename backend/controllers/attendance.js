@@ -81,28 +81,37 @@ const calculateDurationHours = (checkIn, checkOut, checkInDate, checkOutDate) =>
 };
 
 // دالة لحساب الخصومات والتأخيرات
-const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, checkOutDate, remainingGracePeriod, leaveAllowance) => {
+// دالة لحساب الخصومات والتأخيرات
+const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, checkOutDate, remainingGracePeriod, leaveAllowance, attendanceStatus) => {
   let deductedDays = 0;
   let deductedHours = 0;
   let delayMinutes = 0;
   let overtimeHours = 0;
   let newCheckIn = null;
+  let status = attendanceStatus || 'حاضر';
 
   const baseHours = shift.baseHours || 9;
   const maxOvertimeHours = shift.maxOvertimeHours || (shift.shiftType === '24/24' ? 21 : 5);
   const maxDuration = baseHours + maxOvertimeHours;
-  const shiftStartTime = shift.startTime || '08:30';
-  const shiftEndTime = shift.endTime || '17:30';
+  const shiftStartTime = shift.startTime || (shift.name === 'الاداره' ? '08:30' : '08:00');
+  const shiftEndTime = shift.endTime || (shift.name === 'الاداره' ? '17:30' : '17:00');
 
-  if (!checkInTime && !checkOutTime) {
-    return { deductedDays: 1, deductedHours: 0, delayMinutes: 0, overtimeHours: 0, remainingGracePeriod, newCheckIn };
+  // التحقق من حالة الإجازة
+  if (['إجازة سنوية', 'إجازة أسبوعية'].includes(status)) {
+    return { deductedDays: 0, deductedHours: 0, delayMinutes: 0, overtimeHours: 0, remainingGracePeriod, newCheckIn, status };
   }
 
+  // إذا لم يكن هناك بصمة حضور أو انصراف
+  if (!checkInTime && !checkOutTime) {
+    status = 'غياب';
+    return { deductedDays: 1, deductedHours: 0, delayMinutes: 0, overtimeHours: 0, remainingGracePeriod, newCheckIn, status };
+  }
+
+  // إذا كان هناك بصمة انصراف فقط (بدون حضور)
   if (!checkInTime && checkOutTime) {
-    const checkOut = new Date(`${checkOutDate}T${checkOutTime}:00`);
-    const checkIn = new Date(checkOut.getTime() - baseHours * 60 * 60 * 1000);
-    checkInTime = formatTime(checkIn);
-    checkInDate = checkIn.toISOString().split('T')[0];
+    status = 'حاضر';
+    deductedHours = baseHours; // افتراض أن الموظف عمل الساعات الأساسية
+    return { deductedDays: 0, deductedHours, delayMinutes: 0, overtimeHours: 0, remainingGracePeriod, newCheckIn, status };
   }
 
   const checkIn = new Date(`${checkInDate}T${checkInTime}:00`);
@@ -116,14 +125,15 @@ const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, chec
 
   let durationHours = checkOutTime ? calculateDurationHours(checkInTime, checkOutTime, checkInDate, checkOutDate) : 0;
 
+  // إذا كان هناك حضور بدون انصراف (وليس شيفت عابر للأيام)
   if (checkInTime && !checkOutTime && !isShiftCrossDay(shift)) {
     deductedHours = baseHours;
+    status = 'حاضر بدون انصراف';
   }
 
-  if (checkIn && shift.shiftType !== '24/24') {
-    const delayMs = Math.max(0, checkIn - expectedStart);
-    delayMinutes = roundNumber(delayMs / 60000, 1);
-  }
+  // تحديد نوع الخصم
+  const hasDayDeduction = shift.deductions?.some(d => ['quarter', 'half', 'full'].includes(d.type)) ?? false;
+  const hasMinuteDeduction = shift.deductions?.some(d => d.type === 'minutes') ?? false;
 
   if (shift.shiftType === '24/24') {
     delayMinutes = 0;
@@ -136,7 +146,7 @@ const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, chec
         deductedHours = 0;
         overtimeHours = 0;
         newCheckIn = { time: checkOutTime, date: checkOutDate };
-        return { deductedDays, deductedHours, delayMinutes, overtimeHours, remainingGracePeriod, newCheckIn };
+        return { deductedDays, deductedHours, delayMinutes, overtimeHours, remainingGracePeriod, newCheckIn, status };
       }
 
       if (durationHours < baseHours) {
@@ -155,33 +165,45 @@ const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, chec
         overtimeHours = roundNumber(Math.min(durationHours - baseHours, maxOvertimeHours), 1);
       }
     }
-  } else {
-    const hasDayDeduction = shift.deductions?.some(d => ['quarter', 'half', 'full'].includes(d.type)) ?? false;
+  } else if (shift.shiftType === 'morning' && checkInTime) {
+    const checkInTimeObj = new Date(`2025-01-01T${checkInTime}:00`);
+    let deductionStartTime = new Date(`2025-01-01T${shiftStartTime}:00`);
 
-    let appliedDeduction = null;
-    if (shift.shiftType === 'morning') {
-      const checkInTimeObj = new Date(`2025-01-01T${checkInTime}:00`);
-      const deductionStartTime = new Date(`2025-01-01T09:15:00`);
+    // حساب التأخير دائمًا من وقت بداية الشيفت
+    const delayMs = Math.max(0, checkIn - expectedStart);
+    delayMinutes = roundNumber(delayMs / 60000, 1);
 
-      if (checkInTimeObj < deductionStartTime) {
-        delayMinutes = 0;
-      } else {
-        for (const deduction of shift.deductions || []) {
-          let dedStart = new Date(`2025-01-01T${deduction.start}:00`);
-          let dedEnd = new Date(`2025-01-01T${deduction.end}:00`);
-          if (shift.isCrossDay && dedEnd <= dedStart) {
-            dedEnd.setDate(dedEnd.getDate() + 1);
-          }
-          if (checkInTimeObj >= dedStart && checkInTimeObj <= dedEnd) {
-            appliedDeduction = deduction;
-            break;
+    if (delayMinutes > 0) {
+      let appliedDeduction = null;
+
+      // إذا كان الشيفت يستخدم خصومات ربع/نص/يوم
+      if (hasDayDeduction) {
+        // التحقق مما إذا كان وقت الحضور يساوي أو يتجاوز بداية أول نطاق خصم
+        const firstDeductionStart = shift.deductions?.length > 0
+          ? new Date(`2025-01-01T${shift.deductions[0].start}:00`)
+          : deductionStartTime;
+
+        if (checkInTimeObj >= firstDeductionStart) {
+          // البحث عن الخصم المناسب بناءً على وقت الحضور
+          for (const deduction of shift.deductions || []) {
+            let dedStart = new Date(`2025-01-01T${deduction.start}:00`);
+            let dedEnd = new Date(`2025-01-01T${deduction.end}:00`);
+            if (shift.isCrossDay && dedEnd <= dedStart) {
+              dedEnd.setDate(dedEnd.getDate() + 1);
+            }
+            if (checkInTimeObj >= dedStart && checkInTimeObj <= dedEnd) {
+              appliedDeduction = deduction;
+              break;
+            }
           }
         }
 
-        if (appliedDeduction) {
+        if (appliedDeduction && appliedDeduction.type !== 'minutes') {
+          // خصم بناءً على نوع الخصم (ربع يوم، نص يوم، يوم كامل)
           if (delayMinutes <= remainingGracePeriod) {
             remainingGracePeriod = roundNumber(remainingGracePeriod - delayMinutes, 1);
             deductedDays = 0;
+            deductedHours = checkOutTime ? deductedHours : baseHours;
           } else {
             remainingGracePeriod = 0;
             switch (appliedDeduction.type) {
@@ -194,74 +216,90 @@ const calculateDeductions = (shift, checkInTime, checkOutTime, checkInDate, chec
               case 'full':
                 deductedDays = 1;
                 break;
-              case 'minutes':
-                deductedHours = roundNumber(delayMinutes / 60, 1);
-                break;
               default:
                 deductedDays = 0;
             }
+            deductedHours = checkOutTime ? deductedHours : baseHours;
           }
         } else {
-          if (hasDayDeduction) {
-            deductedDays = 1;
-          } else {
-            if (delayMinutes <= remainingGracePeriod) {
-              remainingGracePeriod = roundNumber(remainingGracePeriod - delayMinutes, 1);
-              deductedDays = 0;
-            } else {
-              delayMinutes = roundNumber(delayMinutes - remainingGracePeriod, 1);
-              remainingGracePeriod = 0;
-              deductedHours = roundNumber(delayMinutes / 60, 1);
-            }
+          // إذا كان وقت الحضور قبل نطاق الخصم، لا تخصم من الرصيد
+          deductedDays = 0;
+          deductedHours = checkOutTime ? deductedHours : baseHours;
+        }
+      } else {
+        // إذا كان الشيفت يستخدم خصم بالدقائق
+        if (hasMinuteDeduction && shift.deductions) {
+          const minuteDeduction = shift.deductions.find(d => d.type === 'minutes');
+          if (minuteDeduction) {
+            deductionStartTime = new Date(`2025-01-01T${minuteDeduction.start}:00`);
           }
+        }
+        if (checkInTimeObj >= deductionStartTime) {
+          if (delayMinutes <= remainingGracePeriod) {
+            remainingGracePeriod = roundNumber(remainingGracePeriod - delayMinutes, 1);
+            deductedDays = 0;
+            deductedHours = checkOutTime ? deductedHours : baseHours;
+          } else {
+            const excessDelayMinutes = roundNumber(delayMinutes - remainingGracePeriod, 1);
+            remainingGracePeriod = 0;
+            deductedHours = roundNumber(excessDelayMinutes / 60, 1);
+            deductedDays = 0;
+          }
+        } else {
+          // إذا كان وقت الحضور قبل بداية الخصم، لا تخصم من الرصيد
+          deductedDays = 0;
+          deductedHours = checkOutTime ? deductedHours : baseHours;
         }
       }
     } else {
-      let earlyLeaveMinutes = 0;
-      if (checkOut) {
-        const earlyLeaveMs = Math.max(0, expectedEnd - checkOut);
-        earlyLeaveMinutes = roundNumber(earlyLeaveMs / 60000, 1);
-      } else if (isShiftCrossDay(shift)) {
-        earlyLeaveMinutes = 0;
-      }
-
-      const totalDelayMinutes = roundNumber(delayMinutes + earlyLeaveMinutes, 1);
-      let excessDelayMinutes = totalDelayMinutes;
-
-      if (totalDelayMinutes > 0) {
-        if (totalDelayMinutes <= remainingGracePeriod) {
-          remainingGracePeriod = roundNumber(remainingGracePeriod - totalDelayMinutes, 1);
-          excessDelayMinutes = 0;
-        } else {
-          excessDelayMinutes = roundNumber(totalDelayMinutes - remainingGracePeriod, 1);
-          remainingGracePeriod = 0;
-        }
-      }
-      if (checkOut) {
-        deductedHours += roundNumber(excessDelayMinutes / 60, 1);
-      }
-      delayMinutes = totalDelayMinutes;
+      // إذا لم يكن هناك تأخير
+      deductedHours = checkOutTime ? deductedHours : baseHours;
     }
-
+  } else if (shift.shiftType !== '24/24') {
+    // معالجة الشيفتات المسائية
+    let earlyLeaveMinutes = 0;
     if (checkOut) {
-      const overtimeMs = Math.max(0, checkOut - expectedEnd);
-      overtimeHours = roundNumber(Math.min(overtimeMs / 3600000, maxOvertimeHours), 1);
-
-      const durationHours = calculateDurationHours(checkInTime, checkOutTime, checkInDate, checkOutDate);
-      if (leaveAllowance === 'نعم') {
-        overtimeHours = roundNumber(durationHours * 2, 1);
-      } else if (durationHours > maxDuration) {
-        newCheckIn = { time: checkOutTime, date: checkOutDate };
-        overtimeHours = maxOvertimeHours;
-      }
+      const earlyLeaveMs = Math.max(0, expectedEnd - checkOut);
+      earlyLeaveMinutes = roundNumber(earlyLeaveMs / 60000, 1);
     } else if (isShiftCrossDay(shift)) {
-      overtimeHours = 0;
+      earlyLeaveMinutes = 0;
     }
+
+    const totalDelayMinutes = roundNumber(delayMinutes + earlyLeaveMinutes, 1);
+    let excessDelayMinutes = totalDelayMinutes;
+
+    if (totalDelayMinutes > 0) {
+      if (totalDelayMinutes <= remainingGracePeriod) {
+        remainingGracePeriod = roundNumber(remainingGracePeriod - totalDelayMinutes, 1);
+        excessDelayMinutes = 0;
+      } else {
+        excessDelayMinutes = roundNumber(totalDelayMinutes - remainingGracePeriod, 1);
+        remainingGracePeriod = 0;
+      }
+    }
+    if (checkOut) {
+      deductedHours += roundNumber(excessDelayMinutes / 60, 1);
+    }
+    delayMinutes = totalDelayMinutes;
   }
 
-  return { deductedDays, deductedHours, delayMinutes, overtimeHours, remainingGracePeriod, newCheckIn };
-};
+  if (checkOut) {
+    const overtimeMs = Math.max(0, checkOut - expectedEnd);
+    overtimeHours = roundNumber(Math.min(overtimeMs / 3600000, maxOvertimeHours), 1);
 
+    const durationHours = calculateDurationHours(checkInTime, checkOutTime, checkInDate, checkOutDate);
+    if (leaveAllowance === 'نعم') {
+      overtimeHours = roundNumber(durationHours * 2, 1);
+    } else if (durationHours > maxDuration) {
+      newCheckIn = { time: checkOutTime, date: checkOutDate };
+      overtimeHours = maxOvertimeHours;
+    }
+  } else if (isShiftCrossDay(shift)) {
+    overtimeHours = 0;
+  }
+
+  return { deductedDays, deductedHours, delayMinutes, overtimeHours, remainingGracePeriod, newCheckIn, status };
+};
 // دالة مساعدة لتحديث leaveBalance في جميع سجلات الحضور لموظف معين
 const updateAllAttendanceLeaveBalance = async (employeeCode, newLeaveBalance, session = null) => {
   try {
