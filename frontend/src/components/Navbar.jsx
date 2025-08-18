@@ -7,25 +7,20 @@ const CustomCheckIcon = () => (
   <motion.div
     className="relative h-12 w-12"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-400"
+      className="h-full w-full text-purple-600"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
       strokeWidth={3}
       initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
+      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.8, ease: 'easeInOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
-    <motion.div
-      className="absolute inset-0 rounded-full bg-purple-200 opacity-30"
-      initial={{ scale: 0 }}
-      animate={{ scale: 1.8, opacity: 0, transition: { duration: 1, ease: 'easeOut' } }}
-    />
   </motion.div>
 );
 
@@ -33,15 +28,15 @@ const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
     initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeIn' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeOut' } }}
   >
     <motion.div
-      className="h-8 w-8 border-4 border-purple-400 border-t-transparent rounded-full"
+      className="h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="mr-2 text-purple-400 text-xs font-medium">جارٍ التحميل...</span>
+    <span className="mr-2 text-purple-600 text-xs font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
@@ -63,7 +58,7 @@ function Navbar({ setIsAuthenticated }) {
       setLoading(false);
       navigate('/login');
       setIsMenuOpen(false);
-    }, 1500);
+    }, 2000);
   };
 
   const handleLinkClick = (path) => {
@@ -76,13 +71,13 @@ function Navbar({ setIsAuthenticated }) {
   };
 
   const linkVariants = {
-    hover: { scale: 1.05, x: 5, color: '#C4B5FD', transition: { duration: 0.2, ease: 'easeInOut' } },
-    tap: { scale: 0.95, x: 0, color: '#DDD6FE', transition: { duration: 0.2, ease: 'easeInOut' } },
+    hover: { scale: 1.05, x: 5, color: '#7C3AED', transition: { duration: 0.3, ease: 'easeOut' } },
+    tap: { scale: 0.95, x: 0, color: '#6B7280', transition: { duration: 0.2 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeInOut' } },
-    tap: { scale: 0.95, backgroundColor: '#7C3AED', transition: { duration: 0.2, ease: 'easeInOut' } },
+    hover: { scale: 1.1, boxShadow: '0 10px 20px rgba(139, 92, 246, 0.3)', transition: { duration: 0.3, ease: 'easeOut' } },
+    tap: { scale: 0.95, transition: { duration: 0.2 } },
   };
 
   const sidebarVariants = {
@@ -90,7 +85,7 @@ function Navbar({ setIsAuthenticated }) {
     visible: {
       x: 0,
       opacity: 1,
-      transition: { duration: 0.3, ease: 'easeInOut' }
+      transition: { duration: 0.4, ease: 'easeInOut', type: 'spring', stiffness: 200, damping: 20 }
     },
     exit: { x: '100%', opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }
   };
@@ -121,10 +116,10 @@ function Navbar({ setIsAuthenticated }) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
-        className="md:flex bg-gradient-to-br from-purple-600 to-indigo-700 p-4 sticky top-0 z-50 shadow-lg hidden backdrop-blur-md bg-opacity-95"
+        className="md:flex bg-gray-100 p-4 sticky top-0 z-50 shadow-lg hidden backdrop-blur-md"
       >
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white text-right tracking-wide drop-shadow-md">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-right tracking-wide drop-shadow-lg">
             HR
           </h1>
           <div className="flex items-center space-x-6 space-x-reverse">
@@ -134,12 +129,12 @@ function Navbar({ setIsAuthenticated }) {
                 variants={linkVariants}
                 whileHover="hover"
                 whileTap="tap"
-                className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+                className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
               >
                 <Link
                   to={item.path}
                   onClick={() => handleLinkClick(item.path)}
-                  className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300"
+                  className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300"
                 >
                   {item.label}
                 </Link>
@@ -150,7 +145,7 @@ function Navbar({ setIsAuthenticated }) {
               whileHover="hover"
               whileTap="tap"
               onClick={handleLogout}
-              className="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-300 text-sm font-semibold shadow-sm backdrop-blur-sm"
+              className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 text-sm font-bold shadow-lg hover:shadow-xl"
               disabled={showSuccessAnimation || loading}
             >
               {loading ? <CustomLoadingSpinner /> : 'تسجيل الخروج'}
@@ -168,7 +163,7 @@ function Navbar({ setIsAuthenticated }) {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="text-white bg-white/20 p-2 rounded-full shadow-sm backdrop-blur-sm"
+          className="text-white bg-purple-600 p-2 rounded-xl shadow-lg hover:bg-purple-700 hover:shadow-xl transition-all duration-300"
           onClick={toggleMenu}
         >
           {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -182,7 +177,7 @@ function Navbar({ setIsAuthenticated }) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="md:hidden fixed top-0 right-0 h-full w-64 bg-gradient-to-br from-purple-600 to-indigo-700 p-4 shadow-lg border-l border-purple-200/50 z-40 overflow-y-auto backdrop-blur-md bg-opacity-95"
+            className="md:hidden fixed top-0 right-0 h-full w-64 bg-gray-100 p-4 shadow-lg border-l border-purple-200/50 z-40 overflow-y-auto backdrop-blur-lg"
           >
             <div className="flex flex-col gap-3 mt-12">
               {navItems.map((item, index) => (
@@ -192,12 +187,12 @@ function Navbar({ setIsAuthenticated }) {
                   variants={itemVariants}
                   initial="hidden"
                   animate="visible"
-                  className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+                  className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
                 >
                   <Link
                     to={item.path}
                     onClick={() => handleLinkClick(item.path)}
-                    className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300 flex items-center gap-3"
+                    className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300 flex items-center gap-3"
                   >
                     {item.icon}
                     {item.label}
@@ -209,10 +204,10 @@ function Navbar({ setIsAuthenticated }) {
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
-                className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+                className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
                 onClick={handleLogout}
               >
-                <div className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300 flex items-center gap-3">
+                <div className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300 flex items-center gap-3">
                   <LogOut className="h-5 w-5" />
                   تسجيل الخروج
                 </div>
@@ -222,17 +217,13 @@ function Navbar({ setIsAuthenticated }) {
         )}
       </AnimatePresence>
 
-      {loading && (
-        <div className="flex justify-center mt-4">
-          <CustomLoadingSpinner />
-        </div>
-      )}
       {successMessage && !loading && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="text-purple-400 text-sm text-right mt-2 bg-white/20 p-3 rounded-lg shadow-sm mx-auto max-w-md backdrop-blur-sm"
+          className="bg-purple-100 border border-purple-400 text-purple-800 p-3 rounded-xl text-sm text-right mt-2 shadow-lg mx-auto max-w-md backdrop-blur-sm"
         >
           {successMessage}
         </motion.div>
@@ -240,10 +231,10 @@ function Navbar({ setIsAuthenticated }) {
       <AnimatePresence>
         {showSuccessAnimation && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
-            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3, ease: 'easeInOut' } }}
-            className="fixed inset-0 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 bg-black/20"
           >
             <CustomCheckIcon />
           </motion.div>

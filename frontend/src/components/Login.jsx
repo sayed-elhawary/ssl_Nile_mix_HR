@@ -6,41 +6,36 @@ const CustomCheckIcon = () => (
   <motion.div
     className="relative h-16 w-16"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.7, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-400"
+      className="h-full w-full text-purple-600"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
       strokeWidth={3}
       initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
+      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.9, ease: [0.6, -0.05, 0.01, 0.99] } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
-    <motion.div
-      className="absolute inset-0 rounded-full bg-purple-200 opacity-30"
-      initial={{ scale: 0 }}
-      animate={{ scale: 2, opacity: 0, transition: { duration: 1, ease: 'easeOut' } }}
-    />
   </motion.div>
 );
 
 const CustomLoadingSpinner = () => (
   <motion.div
-    className="flex items-center justify-center gap-2"
+    className="flex items-center justify-center"
     initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <motion.div
-      className="h-8 w-8 border-4 border-purple-400 border-t-transparent rounded-full"
+      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="text-purple-400 text-sm font-medium">جارٍ التحميل...</span>
+    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
@@ -73,7 +68,7 @@ function Login({ setIsAuthenticated }) {
         setTimeout(() => {
           setShowSuccessAnimation(false);
           navigate('/dashboard');
-        }, 1000);
+        }, 2000);
       } else {
         setError('كود الموظف أو كلمة المرور غير صحيحة');
       }
@@ -85,22 +80,27 @@ function Login({ setIsAuthenticated }) {
   };
 
   const formVariants = {
-    hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: 'easeOut', type: 'spring', stiffness: 100 } },
+    hidden: { opacity: 0, y: 50, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 150, damping: 18 } },
+  };
+
+  const inputVariants = {
+    hover: { scale: 1.02, transition: { duration: 0.3, ease: 'easeInOut' } },
+    focus: { borderColor: '#7C3AED', boxShadow: '0 0 8px rgba(124, 58, 237, 0.5)', transition: { duration: 0.3 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 6px 20px rgba(124, 58, 237, 0.3)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.95, backgroundColor: '#6D28D9', transition: { duration: 0.2, ease: 'easeInOut' } },
+    hover: { scale: 1.05, boxShadow: '0 8px 16px rgba(124, 58, 237, 0.3)', transition: { duration: 0.3, ease: 'easeInOut' } },
+    tap: { scale: 0.98, transition: { duration: 0.2 } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900 flex items-center justify-center p-4 sm:p-6 md:p-8 font-noto-sans-arabic">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="bg-white/95 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 max-w-md w-full border border-purple-200/50 backdrop-blur-sm"
+        className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 md:p-10 max-w-md w-full border border-gray-200/50 backdrop-blur-sm"
       >
         <div className="flex justify-center mb-6">
           <img
@@ -109,7 +109,7 @@ function Login({ setIsAuthenticated }) {
             className="h-16 sm:h-20"
           />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center tracking-tight drop-shadow-md">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 text-center tracking-tight">
           NileMix HR System
         </h2>
         <AnimatePresence>
@@ -119,7 +119,7 @@ function Login({ setIsAuthenticated }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-red-100/90 text-red-600 p-3 rounded-lg mb-4 text-sm text-center shadow-sm backdrop-blur-sm"
+              className="bg-red-50 border border-red-300 text-red-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {error}
             </motion.div>
@@ -130,39 +130,40 @@ function Login({ setIsAuthenticated }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-purple-100/90 text-purple-200 p-3 rounded-lg mb-4 text-sm text-center shadow-sm backdrop-blur-sm"
+              className="bg-purple-50 border border-purple-300 text-purple-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {successMessage}
             </motion.div>
           )}
         </AnimatePresence>
-        {loading && (
-          <div className="flex justify-center mb-6">
-            <CustomLoadingSpinner />
-          </div>
-        )}
         <div className="mb-4">
-          <label className="block text-purple-200 text-sm font-semibold mb-2 text-right">كود الموظف</label>
-          <input
+          <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">كود الموظف</label>
+          <motion.input
             type="text"
             value={employeeCode}
             onChange={(e) => setEmployeeCode(e.target.value)}
-            className="w-full px-4 py-2 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300 bg-gray-800/50 text-white text-right text-sm shadow-sm hover:shadow-md"
+            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md text-right"
             required
             disabled={loading}
             placeholder="أدخل كود الموظف"
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
           />
         </div>
         <div className="mb-6">
-          <label className="block text-purple-200 text-sm font-semibold mb-2 text-right">كلمة المرور</label>
-          <input
+          <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">كلمة المرور</label>
+          <motion.input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300 bg-gray-800/50 text-white text-right text-sm shadow-sm hover:shadow-md"
+            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md text-right"
             required
             disabled={loading}
             placeholder="أدخل كلمة المرور"
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
           />
         </div>
         <motion.button
@@ -171,7 +172,7 @@ function Login({ setIsAuthenticated }) {
           whileTap="tap"
           type="submit"
           onClick={handleSubmit}
-          className="w-full bg-purple-700 text-white py-2.5 rounded-lg hover:bg-purple-800 transition-all duration-300 text-sm font-semibold shadow-md hover:shadow-lg"
+          className="w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition-all duration-300 font-semibold text-sm shadow-md hover:shadow-lg"
           disabled={loading}
         >
           {loading ? <CustomLoadingSpinner /> : 'تسجيل الدخول'}
@@ -179,10 +180,11 @@ function Login({ setIsAuthenticated }) {
         <AnimatePresence>
           {showSuccessAnimation && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.5, ease: 'easeInOut', type: 'spring', stiffness: 150 } }}
-              exit={{ opacity: 0, scale: 0.5, rotate: 90, transition: { duration: 0.3, ease: 'easeInOut' } }}
-              className="fixed inset-0 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 flex items-center justify-center z-50 bg-black/20"
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
             >
               <CustomCheckIcon />
             </motion.div>
