@@ -1,28 +1,27 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Add this line to import mongoose
 
 const userSchema = new mongoose.Schema({
   employeeCode: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   department: { type: String, required: true },
-  medicalInsurance: { type: Number, required: true },
-  socialInsurance: { type: Number, required: true },
+  medicalInsurance: { type: Number, default: 0 },
+  socialInsurance: { type: Number, default: 0 },
   name: { type: String, required: true },
-  mealAllowance: { type: Number, required: true },
+  mealAllowance: { type: Number, default: 1500 }, // Default meal allowance
   shiftType: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift', required: true },
   workDays: { type: Number, required: true },
+  totalSalaryWithAllowances: { type: Number, required: true },
   basicSalary: { type: Number, required: true },
-  basicBonus: { type: Number, required: true },
-  bonusPercentage: { type: Number, required: true },
+  basicBonus: { type: Number, required: true, default: 2000 },
+  bonusPercentage: { type: Number, required: true, default: 50 },
   annualLeaveBalance: { type: Number, required: true },
   netSalary: { type: Number, required: true },
   remainingGracePeriod: { type: Number, default: 0 },
-  // الحقول القديمة كـ fallback
   violationTotal: { type: Number, default: 0 },
   violationInstallment: { type: Number, default: 0 },
   advanceTotal: { type: Number, default: 0 },
   advanceInstallment: { type: Number, default: 0 },
   occasionBonus: { type: Number, default: 0 },
-  // حقل جديد لتخزين التعديلات حسب الشهر
   salaryAdjustments: {
     type: Map,
     of: {
@@ -30,10 +29,12 @@ const userSchema = new mongoose.Schema({
       deductionViolationsInstallment: { type: Number, default: 0 },
       totalAdvances: { type: Number, default: 0 },
       deductionAdvancesInstallment: { type: Number, default: 0 },
-      occasionBonus: { type: Number, default: 0 }
+      occasionBonus: { type: Number, default: 0 },
+      mealAllowance: { type: Number, default: 0 }, // Monthly meal allowance
+      mealDeduction: { type: Number, default: 0 } // Monthly meal deduction
     },
     default: {}
   }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,37 +1,47 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Home, LogOut, Settings, UserPlus, Edit, Upload, DollarSign } from 'lucide-react';
 
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-16 w-16"
+    className="relative h-12 w-12"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeInOut' } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }}
   >
-    <svg
-      className="h-full w-full text-purple-600"
+    <motion.svg
+      className="h-full w-full text-purple-400"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
       strokeWidth={3}
+      initial={{ pathLength: 0, rotate: -45 }}
+      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-    <div className="absolute inset-0 rounded-full bg-purple-100 opacity-40" />
+    </motion.svg>
+    <motion.div
+      className="absolute inset-0 rounded-full bg-purple-200 opacity-30"
+      initial={{ scale: 0 }}
+      animate={{ scale: 1.8, opacity: 0, transition: { duration: 1, ease: 'easeOut' } }}
+    />
   </motion.div>
 );
 
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1, transition: { duration: 0.4 } }}
-    exit={{ opacity: 0, transition: { duration: 0.4 } }}
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
-    <div className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
-    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
+    <motion.div
+      className="h-8 w-8 border-4 border-purple-400 border-t-transparent rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+    />
+    <span className="mr-2 text-purple-400 text-xs font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
@@ -57,7 +67,7 @@ function Navbar({ setIsAuthenticated }) {
   };
 
   const handleLinkClick = (path) => {
-    console.log(`Navigating to: ${path}`);
+    navigate(path);
     setIsMenuOpen(false);
   };
 
@@ -65,80 +75,153 @@ function Navbar({ setIsAuthenticated }) {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const menuVariants = {
-    hidden: { opacity: 0, y: -20, height: 0 },
-    visible: { opacity: 1, y: 0, height: 'auto', transition: { duration: 0.2, ease: 'easeInOut' } },
+  const linkVariants = {
+    hover: { scale: 1.05, x: 5, color: '#C4B5FD', transition: { duration: 0.2, ease: 'easeInOut' } },
+    tap: { scale: 0.95, x: 0, color: '#DDD6FE', transition: { duration: 0.2, ease: 'easeInOut' } },
   };
-
-  const linkVariants = [
-    {
-      hover: { scale: 1.05, color: '#8B5CF6', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#A78BFA', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#3B82F6', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#60A5FA', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#10B981', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#34D399', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#F59E0B', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#FBBF24', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#EC4899', boxShadow: '0 4px 12px rgba(236, 72, 153, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#F472B6', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#EAB308', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#FACC15', transition: { duration: 0.2 } },
-    },
-    {
-      hover: { scale: 1.05, color: '#EF4444', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)', transition: { duration: 0.2 } },
-      tap: { scale: 0.95, color: '#F87171', transition: { duration: 0.2 } },
-    },
-  ];
 
   const buttonVariants = {
-    hover: { scale: 1.03, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.2)', transition: { duration: 0.2 } },
-    tap: { scale: 0.98, backgroundColor: '#A78BFA', transition: { duration: 0.2 } },
+    hover: { scale: 1.05, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeInOut' } },
+    tap: { scale: 0.95, backgroundColor: '#7C3AED', transition: { duration: 0.2, ease: 'easeInOut' } },
   };
 
+  const sidebarVariants = {
+    hidden: { x: '100%', opacity: 0 },
+    visible: {
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.3, ease: 'easeInOut' }
+    },
+    exit: { x: '100%', opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: (i) => ({
+      opacity: 1,
+      x: 0,
+      transition: { delay: i * 0.1, duration: 0.3, ease: 'easeInOut' }
+    })
+  };
+
+  const navItems = [
+    { path: '/dashboard', label: 'الداشبورد', icon: <Home className="h-5 w-5" /> },
+    { path: '/create-shift', label: 'إنشاء شيفت', icon: <Edit className="h-5 w-5" /> },
+    { path: '/create-user', label: 'إنشاء حساب', icon: <UserPlus className="h-5 w-5" /> },
+    { path: '/edit-user', label: 'تعديل حساب', icon: <Edit className="h-5 w-5" /> },
+    { path: '/settings', label: 'الإعدادات', icon: <Settings className="h-5 w-5" /> },
+    { path: '/attendance-upload', label: 'رفع الحضور', icon: <Upload className="h-5 w-5" /> },
+    { path: '/monthly-salary-report', label: 'تقرير المرتب', icon: <DollarSign className="h-5 w-5" /> },
+    { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
+  ];
+
   return (
-    <motion.nav
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeInOut' }}
-      className="bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-4 font-noto-sans-arabic sticky top-0 z-50 shadow-md dir=rtl"
-      style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}
-    >
-      <div className="container mx-auto flex justify-between items-center relative">
-        <h1 className="text-2xl sm:text-3xl font-bold text-purple-600 text-right tracking-wide drop-shadow-sm">
-          HR
-        </h1>
-        <div className="flex items-center space-x-4 space-x-reverse">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="md:hidden text-purple-600 focus:outline-none"
-            onClick={toggleMenu}
-          >
-            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </motion.button>
-          <motion.button
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={handleLogout}
-            className="hidden md:block bg-purple-600 text-white px-4 py-2 rounded-2xl hover:bg-purple-700 transition-all duration-200 text-sm font-semibold shadow-md"
-            disabled={showSuccessAnimation || loading}
-          >
-            {loading ? <CustomLoadingSpinner /> : 'تسجيل الخروج'}
-          </motion.button>
+    <div className="font-noto-sans-arabic dir=rtl">
+      <motion.nav
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+        className="md:flex bg-gradient-to-br from-purple-600 to-indigo-700 p-4 sticky top-0 z-50 shadow-lg hidden backdrop-blur-md bg-opacity-95"
+      >
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white text-right tracking-wide drop-shadow-md">
+            HR
+          </h1>
+          <div className="flex items-center space-x-6 space-x-reverse">
+            {navItems.map((item, index) => (
+              <motion.div
+                key={item.path}
+                variants={linkVariants}
+                whileHover="hover"
+                whileTap="tap"
+                className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+              >
+                <Link
+                  to={item.path}
+                  onClick={() => handleLinkClick(item.path)}
+                  className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300"
+                >
+                  {item.label}
+                </Link>
+              </motion.div>
+            ))}
+            <motion.button
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
+              onClick={handleLogout}
+              className="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-300 text-sm font-semibold shadow-sm backdrop-blur-sm"
+              disabled={showSuccessAnimation || loading}
+            >
+              {loading ? <CustomLoadingSpinner /> : 'تسجيل الخروج'}
+            </motion.button>
+          </div>
         </div>
-      </div>
+      </motion.nav>
+
+      <motion.div
+        className="md:hidden fixed top-4 right-4 z-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: 'easeInOut' }}
+      >
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="text-white bg-white/20 p-2 rounded-full shadow-sm backdrop-blur-sm"
+          onClick={toggleMenu}
+        >
+          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </motion.button>
+      </motion.div>
+
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            variants={sidebarVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="md:hidden fixed top-0 right-0 h-full w-64 bg-gradient-to-br from-purple-600 to-indigo-700 p-4 shadow-lg border-l border-purple-200/50 z-40 overflow-y-auto backdrop-blur-md bg-opacity-95"
+          >
+            <div className="flex flex-col gap-3 mt-12">
+              {navItems.map((item, index) => (
+                <motion.div
+                  key={item.path}
+                  custom={index}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+                >
+                  <Link
+                    to={item.path}
+                    onClick={() => handleLinkClick(item.path)}
+                    className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300 flex items-center gap-3"
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
+              <motion.div
+                custom={navItems.length}
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                className="px-3 py-2 cursor-pointer rounded-lg hover:bg-white/10 transition-all duration-300"
+                onClick={handleLogout}
+              >
+                <div className="text-white text-sm font-medium hover:text-purple-200 transition-all duration-300 flex items-center gap-3">
+                  <LogOut className="h-5 w-5" />
+                  تسجيل الخروج
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {loading && (
         <div className="flex justify-center mt-4">
           <CustomLoadingSpinner />
@@ -149,120 +232,24 @@ function Navbar({ setIsAuthenticated }) {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="text-purple-600 text-sm sm:text-base text-right mt-2 bg-purple-50 p-3 rounded-xl shadow-sm"
+          className="text-purple-400 text-sm text-right mt-2 bg-white/20 p-3 rounded-lg shadow-sm mx-auto max-w-md backdrop-blur-sm"
         >
           {successMessage}
         </motion.div>
       )}
       <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            variants={menuVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            className="md:hidden absolute top-16 left-0 right-0 bg-white p-4 shadow-md w-full border border-purple-100"
-          >
-            <div className="flex flex-col gap-3">
-              <motion.div variants={linkVariants[0]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/dashboard" onClick={() => handleLinkClick('/dashboard')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  الداشبورد
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[1]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/create-shift" onClick={() => handleLinkClick('/create-shift')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  إنشاء شيفت
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[2]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/create-user" onClick={() => handleLinkClick('/create-user')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  إنشاء حساب
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[3]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/edit-user" onClick={() => handleLinkClick('/edit-user')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  تعديل حساب
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[4]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/settings" onClick={() => handleLinkClick('/settings')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  الإعدادات
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[5]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/attendance-upload" onClick={() => handleLinkClick('/attendance-upload')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  رفع بيانات الحضور
-                </Link>
-              </motion.div>
-              <motion.div variants={linkVariants[6]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-                <Link to="/monthly-salary-report" onClick={() => handleLinkClick('/monthly-salary-report')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200 block">
-                  تقرير المرتب الشهري
-                </Link>
-              </motion.div>
-              <motion.button
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-                onClick={handleLogout}
-                className="bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-semibold text-right shadow-md"
-                disabled={showSuccessAnimation || loading}
-              >
-                {loading ? <CustomLoadingSpinner /> : 'تسجيل الخروج'}
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="hidden md:flex items-center space-x-6 space-x-reverse">
-        <motion.div variants={linkVariants[0]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/dashboard" onClick={() => handleLinkClick('/dashboard')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            الداشبورد
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[1]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/create-shift" onClick={() => handleLinkClick('/create-shift')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            إنشاء شيفت
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[2]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/create-user" onClick={() => handleLinkClick('/create-user')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            إنشاء حساب
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[3]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/edit-user" onClick={() => handleLinkClick('/edit-user')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            تعديل حساب
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[4]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/settings" onClick={() => handleLinkClick('/settings')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            الإعدادات
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[5]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/attendance-upload" onClick={() => handleLinkClick('/attendance-upload')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            رفع بيانات الحضور
-          </Link>
-        </motion.div>
-        <motion.div variants={linkVariants[6]} whileHover="hover" whileTap="tap" className="px-3 py-2 cursor-pointer rounded-lg">
-          <Link to="/monthly-salary-report" onClick={() => handleLinkClick('/monthly-salary-report')} className="text-gray-700 text-sm font-medium hover:text-purple-600 transition-all duration-200">
-            تقرير المرتب الشهري
-          </Link>
-        </motion.div>
-      </div>
-      <AnimatePresence>
         {showSuccessAnimation && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
-            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.4, ease: 'easeIn' } }}
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
+            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.3, ease: 'easeInOut' } }}
+            className="fixed inset-0 flex items-center justify-center z-50"
           >
             <CustomCheckIcon />
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.nav>
+    </div>
   );
 }
 

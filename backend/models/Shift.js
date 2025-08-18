@@ -45,7 +45,11 @@ const shiftSchema = new mongoose.Schema({
     type: { type: String, enum: ['quarter', 'half', 'full', 'minutes'], required: true },
   }],
   sickLeaveDeduction: { type: String, enum: ['none', 'quarter', 'half', 'full'], required: true },
+  // جديد: حقول لحساب الساعات الإضافية
+  overtimeBasis: { type: String, enum: ['basicSalary', 'totalSalaryWithAllowances'], default: 'basicSalary' },
+  overtimeMultiplier: { type: Number, enum: [1, 1.5, 2], default: 1 },
+  fridayOvertimeBasis: { type: String, enum: ['basicSalary', 'totalSalaryWithAllowances'], default: 'basicSalary' },
+  fridayOvertimeMultiplier: { type: Number, enum: [1, 1.5, 2], default: 1 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Shift', shiftSchema);
-

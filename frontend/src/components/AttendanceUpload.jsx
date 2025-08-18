@@ -92,6 +92,7 @@ function AttendanceUpload({ isAuthenticated }) {
       leaveAllowance: 'نعم',
       sickLeaveDeduction: 'none',
       workDays: [0, 1, 2, 3, 4],
+      isWorkedWeeklyOff: false,
     },
     {
       _id: '2',
@@ -113,6 +114,29 @@ function AttendanceUpload({ isAuthenticated }) {
       leaveAllowance: 'لا يوجد',
       sickLeaveDeduction: 'none',
       workDays: [0, 1, 2, 3, 4],
+      isWorkedWeeklyOff: false,
+    },
+    {
+      _id: '3',
+      employeeCode: '3343',
+      employeeName: 'sayed',
+      date: '2025-05-03',
+      checkInDate: '2025-05-03',
+      checkIn: '09:00',
+      checkOutDate: '2025-05-03',
+      checkOut: '17:00',
+      shiftName: 'صباحي',
+      attendanceStatus: 'حاضر',
+      delayMinutes: 0,
+      remainingGracePeriod: 120,
+      deductedHours: 0,
+      overtimeHours: 0,
+      deductedDays: 0,
+      leaveBalance: 14,
+      leaveAllowance: 'نعم',
+      sickLeaveDeduction: 'none',
+      workDays: [0, 1, 2, 3, 4],
+      isWorkedWeeklyOff: true, // يوم السبت، إجازة أسبوعية لكنه عمل
     },
   ]);
   const [filteredData, setFilteredData] = useState(attendanceData);
@@ -128,7 +152,6 @@ function AttendanceUpload({ isAuthenticated }) {
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editCheckInDate, setEditCheckInDate] = useState('');
   const [editCheckOutDate, setEditCheckOutDate] = useState('');
-  const [leaveAllowanceCheckbox, setLeaveAllowanceCheckbox] = useState(false);
   const [annualLeaveCheckbox, setAnnualLeaveCheckbox] = useState(false);
   const [sickLeaveCheckbox, setSickLeaveCheckbox] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -153,7 +176,14 @@ function AttendanceUpload({ isAuthenticated }) {
     totalLeaveBalance: 21,
     totalOfficialLeaves: 0,
     totalDeductedDays: 0,
+    totalWorkedWeeklyOffDays: 0,
   });
+
+  // دالة للتحقق مما إذا كان اليوم هو يوم إجازة أسبوعية
+  const isWeeklyOffDay = (date, workDays) => {
+    const day = new Date(date).getDay();
+    return !workDays.includes(day);
+  };
 
   useEffect(() => {
     const calculateTotals = () => {
@@ -177,6 +207,7 @@ function AttendanceUpload({ isAuthenticated }) {
       const totalOfficialLeaves = filteredData.filter(row => row.attendanceStatus === 'إجازة رسمية').length;
       const totalDeductedDays = filteredData.reduce((sum, row) => sum + (row.deductedDays || 0), 0);
       const totalLeaveBalance = filteredData.reduce((sum, row) => sum + (row.leaveBalance || 0), 0) / (filteredData.length || 1);
+      const totalWorkedWeeklyOffDays = filteredData.reduce((sum, row) => sum + (row.isWorkedWeeklyOff ? 1 : 0), 0);
 
       setTotals({
         totalAttendanceDays,
@@ -190,6 +221,7 @@ function AttendanceUpload({ isAuthenticated }) {
         totalLeaveBalance: parseFloat(totalLeaveBalance.toFixed(2)),
         totalOfficialLeaves,
         totalDeductedDays,
+        totalWorkedWeeklyOffDays,
       });
     };
     calculateTotals();
@@ -234,6 +266,8 @@ function AttendanceUpload({ isAuthenticated }) {
             deductedHours: (!record.checkIn || !record.checkOut) ? 0 : parseFloat(record.deductedHours.toFixed(2)),
             overtimeHours: (!record.checkIn || !record.checkOut) ? 0 : parseFloat(record.overtimeHours.toFixed(2)),
             workDays: record.workDays ? record.workDays.map(day => typeof day === 'string' ? dayMap[day] : day) : [],
+            isWorkedWeeklyOff: record.isWorkedWeeklyOff || false,
+            leaveAllowance: record.isWorkedWeeklyOff ? 'نعم' : record.leaveAllowance || 'لا يوجد',
           }));
           setAttendanceData(adjustedData);
           setFilteredData(adjustedData);
@@ -290,6 +324,8 @@ function AttendanceUpload({ isAuthenticated }) {
             deductedHours: (!record.checkIn || !record.checkOut) ? 0 : parseFloat(record.deductedHours.toFixed(2)),
             overtimeHours: (!record.checkIn || !record.checkOut) ? 0 : parseFloat(record.overtimeHours.toFixed(2)),
             workDays: record.workDays ? record.workDays.map(day => typeof day === 'string' ? dayMap[day] : day) : [],
+            isWorkedWeeklyOff: record.isWorkedWeeklyOff || false,
+            leaveAllowance: record.isWorkedWeeklyOff ? 'نعم' : record.leaveAllowance || 'لا يوجد',
           }));
 
           if (filterAbsences) {
@@ -371,7 +407,6 @@ function AttendanceUpload({ isAuthenticated }) {
     setEditCheckOut(record.checkOut || '');
     setEditCheckInDate(record.checkInDate || record.date);
     setEditCheckOutDate(record.checkOutDate || record.date);
-    setLeaveAllowanceCheckbox(record.leaveAllowance === 'نعم');
     setAnnualLeaveCheckbox(record.attendanceStatus === 'إجازة سنوية');
     setSickLeaveCheckbox(record.attendanceStatus === 'إجازة مرضية');
     setIsEditModalOpen(true);
@@ -385,7 +420,6 @@ function AttendanceUpload({ isAuthenticated }) {
     setEditCheckOut('');
     setEditCheckInDate('');
     setEditCheckOutDate('');
-    setLeaveAllowanceCheckbox(false);
     setAnnualLeaveCheckbox(false);
     setSickLeaveCheckbox(false);
     setError('');
@@ -405,90 +439,94 @@ function AttendanceUpload({ isAuthenticated }) {
         return 'وقت الانصراف يجب أن يكون بعد وقت الحضور';
       }
     }
-    if (leaveAllowanceCheckbox && (!editCheckIn || !editCheckOut)) {
-      return 'بدل الإجازة يتطلب وقت حضور وانصراف';
-    }
     return '';
   };
 
-  const handleEditSubmit = async () => {
-    if (!editRecord || !editRecord._id || editRecord._id.length !== 24) {
-      console.error('Invalid or missing _id:', editRecord);
-      setError('معرف السجل غير صالح أو مفقود.');
-      return;
-    }
+const handleEditSubmit = async () => {
+  if (!editRecord || !editRecord._id || editRecord._id.length !== 24) {
+    console.error('Invalid or missing _id:', editRecord);
+    setError('معرف السجل غير صالح أو مفقود.');
+    return;
+  }
 
-    const validationError = validateEditDates();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+  const validationError = validateEditDates();
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-    setLoading(true);
-    setError('');
-    setSuccessMessage('');
+  setLoading(true);
+  setError('');
+  setSuccessMessage('');
 
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('التوكن غير موجود، يرجى تسجيل الدخول');
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('التوكن غير موجود، يرجى تسجيل الدخول');
 
-      const expectedStatus = annualLeaveCheckbox ? 'إجازة سنوية' : sickLeaveCheckbox ? 'إجازة مرضية' : (editCheckIn || editCheckOut) ? 'حاضر' : 'غائب';
-      const body = {
-        checkIn: annualLeaveCheckbox || sickLeaveCheckbox ? null : (editCheckIn || null),
-        checkOut: annualLeaveCheckbox || sickLeaveCheckbox ? null : (editCheckOut || null),
-        checkInDate: editCheckInDate || null,
-        checkOutDate: editCheckOutDate || null,
-        leaveAllowance: leaveAllowanceCheckbox ? 'نعم' : 'لا',
-        attendanceStatus: expectedStatus,
+    const isWeeklyOff = isWeeklyOffDay(editCheckInDate, editRecord.workDays);
+    const isFriday = new Date(editCheckInDate).getDay() === 5; // التحقق إذا كان اليوم الجمعة
+    const expectedStatus = annualLeaveCheckbox
+      ? 'إجازة سنوية'
+      : sickLeaveCheckbox
+      ? 'إجازة مرضية'
+      : (editCheckIn || editCheckOut)
+      ? 'حاضر'
+      : 'غائب';
+    const isWorkedWeeklyOffNew = isWeeklyOff && editCheckIn && editCheckOut && !annualLeaveCheckbox && !sickLeaveCheckbox;
+    const leaveAllowanceValue = isFriday && editCheckIn && editCheckOut ? 'لا يوجد' : isWorkedWeeklyOffNew ? 'نعم' : 'لا';
+
+    const body = {
+      checkIn: annualLeaveCheckbox || sickLeaveCheckbox ? null : (editCheckIn || null),
+      checkOut: annualLeaveCheckbox || sickLeaveCheckbox ? null : (editCheckOut || null),
+      checkInDate: editCheckInDate || null,
+      checkOutDate: editCheckOutDate || null,
+      leaveAllowance: leaveAllowanceValue,
+      attendanceStatus: expectedStatus,
+      isWorkedWeeklyOff: isWorkedWeeklyOffNew,
+    };
+
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/api/attendance/${editRecord._id}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    if (data.success && data.data.attendanceStatus === expectedStatus) {
+      const adjustedData = {
+        ...data.data,
+        deductedHours: (!data.data.checkIn || !data.data.checkOut) ? 0 : parseFloat(data.data.deductedHours.toFixed(2)),
+        overtimeHours: (!data.data.checkIn || !data.data.checkOut) ? 0 : parseFloat(data.data.overtimeHours.toFixed(2)),
+        workDays: data.data.workDays ? data.data.workDays.map(day => typeof day === 'string' ? dayMap[day] : day) : [],
+        isWorkedWeeklyOff: data.data.isWorkedWeeklyOff || false,
+        leaveAllowance: data.data.leaveAllowance || 'لا يوجد',
       };
-
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/attendance/${editRecord._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-      if (data.success && data.data.attendanceStatus === expectedStatus) {
-        const adjustedData = {
-          ...data.data,
-          deductedHours: (!data.data.checkIn || !data.data.checkOut) ? 0 : parseFloat(data.data.deductedHours.toFixed(2)),
-          overtimeHours: (!data.data.checkIn || !data.data.checkOut) ? 0 : parseFloat(data.data.overtimeHours.toFixed(2)),
-          workDays: data.data.workDays ? data.data.workDays.map(day => typeof day === 'string' ? dayMap[day] : day) : [],
-        };
-        setAttendanceData((prev) => prev.map((record) => (record._id === editRecord._id ? adjustedData : record)));
-        setFilteredData((prev) => prev.map((record) => (record._id === editRecord._id ? adjustedData : record)));
-        setSuccessMessage('تم تعديل سجل الحضور بنجاح');
-        setShowSuccessAnimation(true);
-        setTimeout(() => setShowSuccessAnimation(false), 1500);
-        closeEditModal();
-      } else {
-        setError(data.message || `فشل تحديث حالة الحضور إلى "${expectedStatus}".`);
-      }
-    } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء التعديل.');
-    } finally {
-      setLoading(false);
+      setAttendanceData((prev) => prev.map((record) => (record._id === editRecord._id ? adjustedData : record)));
+      setFilteredData((prev) => prev.map((record) => (record._id === editRecord._id ? adjustedData : record)));
+      setSuccessMessage('تم تعديل سجل الحضور بنجاح');
+      setShowSuccessAnimation(true);
+      setTimeout(() => setShowSuccessAnimation(false), 1500);
+      closeEditModal();
+    } else {
+      setError(data.message || `فشل تحديث حالة الحضور إلى "${expectedStatus}".`);
     }
-  };
-
+  } catch (err) {
+    setError(err.message || 'حدث خطأ أثناء التعديل.');
+  } finally {
+    setLoading(false);
+  }
+};
   const handleCheckboxChange = (type) => {
-    if (type === 'leaveAllowance') {
-      setLeaveAllowanceCheckbox(!leaveAllowanceCheckbox);
-      setAnnualLeaveCheckbox(false);
-      setSickLeaveCheckbox(false);
-    } else if (type === 'annualLeave') {
+    if (type === 'annualLeave') {
       setAnnualLeaveCheckbox(!annualLeaveCheckbox);
-      setLeaveAllowanceCheckbox(false);
       setSickLeaveCheckbox(false);
       setEditCheckIn('');
       setEditCheckOut('');
     } else if (type === 'sickLeave') {
       setSickLeaveCheckbox(!sickLeaveCheckbox);
-      setLeaveAllowanceCheckbox(false);
       setAnnualLeaveCheckbox(false);
       setEditCheckIn('');
       setEditCheckOut('');
@@ -883,7 +921,7 @@ function AttendanceUpload({ isAuthenticated }) {
         ) : filteredData.length > 0 ? (
           <>
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-x-auto snap-x">
-              <table className="min-w-[1500px] md:min-w-full w-full text-right text-[9px] sm:text-[10px] md:text-xs lg:text-[13px] table-auto md:table-fixed">
+              <table className="min-w-[1600px] md:min-w-full w-full text-right text-[9px] sm:text-[10px] md:text-xs lg:text-[13px] table-auto md:table-fixed">
                 <thead>
                   <tr className="bg-purple-600 text-white">
                     <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">كود الموظف</th>
@@ -902,6 +940,7 @@ function AttendanceUpload({ isAuthenticated }) {
                     <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">رصيد الإجازة</th>
                     <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">بدل الإجازة</th>
                     <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">خصم المرضية</th>
+                    <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">بدل الإجازة الأسبوعية</th>
                     <th className="p-1.5 sm:p-2 md:p-3 w-[6%] min-w-[50px] font-semibold">أيام العمل</th>
                     <th className="p-1.5 sm:p-2 md:p-3 w-[8%] min-w-[50px] font-semibold">إجراءات</th>
                   </tr>
@@ -922,6 +961,8 @@ function AttendanceUpload({ isAuthenticated }) {
                           ? 'bg-blue-50'
                           : record.attendanceStatus === 'إجازة رسمية'
                           ? 'bg-yellow-50'
+                          : record.isWorkedWeeklyOff
+                          ? 'bg-teal-50'
                           : 'bg-gray-50'
                       }`}
                     >
@@ -941,6 +982,7 @@ function AttendanceUpload({ isAuthenticated }) {
                       <td className="p-1.5 sm:p-2 md:p-3">{record.leaveBalance}</td>
                       <td className="p-1.5 sm:p-2 md:p-3">{record.leaveAllowance}</td>
                       <td className="p-1.5 sm:p-2 md:p-3">{record.sickLeaveDeduction}</td>
+                      <td className="p-1.5 sm:p-2 md:p-3">{record.isWorkedWeeklyOff ? 'نعم' : 'لا'}</td>
                       <td className="p-1.5 sm:p-2 md:p-3">{record.workDays.length} أيام</td>
                       <td className="p-1.5 sm:p-2 md:p-3">
                         <motion.button
@@ -1043,6 +1085,13 @@ function AttendanceUpload({ isAuthenticated }) {
                   <p className="text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold">إجمالي الأيام المخصومة</p>
                   <p className="font-bold text-red-700">{totals.totalDeductedDays}</p>
                 </motion.div>
+                <motion.div
+                  variants={totalItemVariants}
+                  className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-2 sm:p-3 shadow-sm border border-teal-200 hover:shadow-md transition-all duration-300"
+                >
+                  <p className="text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold">إجمالي أيام بدل الإجازة الأسبوعية</p>
+                  <p className="font-bold text-teal-700">{totals.totalWorkedWeeklyOffDays}</p>
+                </motion.div>
               </div>
             </motion.div>
           </>
@@ -1135,15 +1184,6 @@ function AttendanceUpload({ isAuthenticated }) {
                   <label className="flex items-center space-x-2 space-x-reverse">
                     <input
                       type="checkbox"
-                      checked={leaveAllowanceCheckbox}
-                      onChange={() => handleCheckboxChange('leaveAllowance')}
-                      className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
-                    />
-                    <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">بدل الإجازة</span>
-                  </label>
-                  <label className="flex items-center space-x-2 space-x-reverse">
-                    <input
-                      type="checkbox"
                       checked={annualLeaveCheckbox}
                       onChange={() => handleCheckboxChange('annualLeave')}
                       className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
@@ -1191,293 +1231,293 @@ function AttendanceUpload({ isAuthenticated }) {
               </motion.div>
             </motion.div>
           )}
-          {isOfficialLeaveModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.8, y: 50 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.8, y: 50 }}
-                className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
-              >
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة رسمية</h3>
-                {error && (
-                  <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
-                    {error}
-                  </div>
-                )}
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ البداية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveStartDate}
-                      onChange={(e) => setLeaveStartDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ النهاية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      كود الموظف (اختياري)
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveEmployeeCode}
-                      onChange={(e) => setLeaveEmployeeCode(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                      disabled={applyToAll}
-                    />
-                  </div>
-                  <label className="flex items-center space-x-2 space-x-reverse">
-                    <input
-                      type="checkbox"
-                      checked={applyToAll}
-                      onChange={(e) => setApplyToAll(e.target.checked)}
-                      className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
-                    />
-                    <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
-                  </label>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                  >
-                    إلغاء
-                  </motion.button>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={handleOfficialLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة الرسمية'
-                    )}
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-          {isAnnualLeaveModalOpen && (
-            <motion.div
 
-		     initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.8, y: 50 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.8, y: 50 }}
-                className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
-              >
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة سنوية</h3>
-                {error && (
-                  <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
-                    {error}
-                  </div>
-                )}
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ البداية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveStartDate}
-                      onChange={(e) => setLeaveStartDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ النهاية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      كود الموظف (اختياري)
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveEmployeeCode}
-                      onChange={(e) => setLeaveEmployeeCode(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                      disabled={applyToAll}
-                    />
-                  </div>
-                  <label className="flex items-center space-x-2 space-x-reverse">
-                    <input
-                      type="checkbox"
-                      checked={applyToAll}
-                      onChange={(e) => setApplyToAll(e.target.checked)}
-                      className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
-                    />
-                    <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
-                  </label>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                  >
-                    إلغاء
-                  </motion.button>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={handleAnnualLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة السنوية'
-                    )}
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+          {isOfficialLeaveModalOpen && (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+  >
+    <motion.div
+      initial={{ scale: 0.8, y: 50 }}
+      animate={{ scale: 1, y: 0 }}
+      exit={{ scale: 0.8, y: 50 }}
+      className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
+    >
+      <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة رسمية</h3>
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
+          {error}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ البداية
+          </label>
+          <input
+            type="date"
+            value={leaveStartDate}
+            onChange={(e) => setLeaveStartDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ النهاية
+          </label>
+          <input
+            type="date"
+            value={leaveEndDate}
+            onChange={(e) => setLeaveEndDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            كود الموظف (اختياري)
+          </label>
+          <input
+            type="text"
+            value={leaveEmployeeCode}
+            onChange={(e) => setLeaveEmployeeCode(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+            disabled={applyToAll}
+          />
+        </div>
+        <label className="flex items-center space-x-2 space-x-reverse">
+          <input
+            type="checkbox"
+            checked={applyToAll}
+            onChange={(e) => setApplyToAll(e.target.checked)}
+            className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
+          />
+          <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على الجميع</span>
+        </label>
+      </div>
+      <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={closeLeaveModal}
+          className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+        >
+          إلغاء
+        </motion.button>
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={handleOfficialLeaveSubmit}
+          className="w-full sm:w-1/2 bg-green-600 text-white p-2 sm:p-3 rounded-lg hover:bg-green-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <CustomButtonLoadingSpinner />
+              <span className="mr-2">جارٍ الحفظ...</span>
+            </>
+          ) : (
+            'تطبيق الإجازة الرسمية'
           )}
-          {isSickLeaveModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.8, y: 50 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.8, y: 50 }}
-                className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
-              >
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة مرضية</h3>
-                {error && (
-                  <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
-                    {error}
-                  </div>
-                )}
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ البداية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveStartDate}
-                      onChange={(e) => setLeaveStartDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      تاريخ النهاية
-                    </label>
-                    <input
-                      type="date"
-                      value={leaveEndDate}
-                      onChange={(e) => setLeaveEndDate(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
-                      كود الموظف (اختياري)
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveEmployeeCode}
-                      onChange={(e) => setLeaveEmployeeCode(e.target.value)}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
-                      disabled={applyToAll}
-                    />
-                  </div>
-                  <label className="flex items-center space-x-2 space-x-reverse">
-                    <input
-                      type="checkbox"
-                      checked={applyToAll}
-                      onChange={(e) => setApplyToAll(e.target.checked)}
-                      className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
-                    />
-                    <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على جميع الموظفين</span>
-                  </label>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={closeLeaveModal}
-                    className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                  >
-                    إلغاء
-                  </motion.button>
-                  <motion.button
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={handleSickLeaveSubmit}
-                    className="w-full sm:w-1/2 bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <CustomButtonLoadingSpinner />
-                        <span className="mr-2">جارٍ التطبيق...</span>
-                      </>
-                    ) : (
-                      'تطبيق الإجازة المرضية'
-                    )}
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
+        </motion.button>
+      </div>
+    </motion.div>
+  </motion.div>
+)}
+{isAnnualLeaveModalOpen && (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+  >
+    <motion.div
+      initial={{ scale: 0.8, y: 50 }}
+      animate={{ scale: 1, y: 0 }}
+      exit={{ scale: 0.8, y: 50 }}
+      className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
+    >
+      <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة سنوية</h3>
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
+          {error}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ البداية
+          </label>
+          <input
+            type="date"
+            value={leaveStartDate}
+            onChange={(e) => setLeaveStartDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ النهاية
+          </label>
+          <input
+            type="date"
+            value={leaveEndDate}
+            onChange={(e) => setLeaveEndDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            كود الموظف (اختياري)
+          </label>
+          <input
+            type="text"
+            value={leaveEmployeeCode}
+            onChange={(e) => setLeaveEmployeeCode(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+            disabled={applyToAll}
+          />
+        </div>
+        <label className="flex items-center space-x-2 space-x-reverse">
+          <input
+            type="checkbox"
+            checked={applyToAll}
+            onChange={(e) => setApplyToAll(e.target.checked)}
+            className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
+          />
+          <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على الجميع</span>
+        </label>
+      </div>
+      <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={closeLeaveModal}
+          className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+        >
+          إلغاء
+        </motion.button>
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={handleAnnualLeaveSubmit}
+          className="w-full sm:w-1/2 bg-purple-600 text-white p-2 sm:p-3 rounded-lg hover:bg-purple-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <CustomButtonLoadingSpinner />
+              <span className="mr-2">جارٍ الحفظ...</span>
+            </>
+          ) : (
+            'تطبيق الإجازة السنوية'
           )}
-        </AnimatePresence>
+        </motion.button>
+      </div>
+    </motion.div>
+  </motion.div>
+)}
+{isSickLeaveModalOpen && (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+  >
+    <motion.div
+      initial={{ scale: 0.8, y: 50 }}
+      animate={{ scale: 1, y: 0 }}
+      exit={{ scale: 0.8, y: 50 }}
+      className="bg-white rounded-2xl p-3 sm:p-4 md:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto shadow-lg border border-gray-100"
+    >
+      <h3 className="text-base sm:text-lg md:text-xl font-bold text-purple-600 mb-2 sm:mb-3 text-right">إجازة مرضية</h3>
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-2 sm:mb-3 text-right text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm">
+          {error}
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ البداية
+          </label>
+          <input
+            type="date"
+            value={leaveStartDate}
+            onChange={(e) => setLeaveStartDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            تاريخ النهاية
+          </label>
+          <input
+            type="date"
+            value={leaveEndDate}
+            onChange={(e) => setLeaveEndDate(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-800 text-[10px] sm:text-xs md:text-sm font-semibold mb-1 text-right">
+            كود الموظف (اختياري)
+          </label>
+          <input
+            type="text"
+            value={leaveEmployeeCode}
+            onChange={(e) => setLeaveEmployeeCode(e.target.value)}
+            className="w-full p-2 sm:p-3 border border-purple-200 rounded-lg text-right text-[10px] sm:text-xs md:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+            disabled={applyToAll}
+          />
+        </div>
+        <label className="flex items-center space-x-2 space-x-reverse">
+          <input
+            type="checkbox"
+            checked={applyToAll}
+            onChange={(e) => setApplyToAll(e.target.checked)}
+            className="h-3 sm:h-4 w-3 sm:w-4 text-purple-600 focus:ring-purple-500 rounded"
+          />
+          <span className="text-[10px] sm:text-xs md:text-sm text-gray-800 font-semibold">تطبيق على الجميع</span>
+        </label>
+      </div>
+      <div className="flex flex-col sm:flex-row justify-between mt-3 sm:mt-4 gap-3 sm:gap-6">
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={closeLeaveModal}
+          className="w-full sm:w-1/2 bg-gray-200 text-gray-800 p-2 sm:p-3 rounded-lg hover:bg-gray-300 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+        >
+          إلغاء
+        </motion.button>
+        <motion.button
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+          onClick={handleSickLeaveSubmit}
+          className="w-full sm:w-1/2 bg-yellow-600 text-white p-2 sm:p-3 rounded-lg hover:bg-yellow-700 transition-all duration-300 text-[10px] sm:text-xs md:text-sm font-semibold shadow-sm flex items-center justify-center"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <CustomButtonLoadingSpinner />
+              <span className="mr-2">جارٍ الحفظ...</span>
+            </>
+          ) : (
+            'تطبيق الإجازة المرضية'
+          )}
+        </motion.button>
+      </div>
+    </motion.div>
+  </motion.div>
+)}
+        </AnimatePresence> {/* Close the AnimatePresence tag here */}
       </motion.div>
     </div>
   );

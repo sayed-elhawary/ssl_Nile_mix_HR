@@ -56,6 +56,10 @@ function Settings() {
   const [gracePeriod, setGracePeriod] = useState('');
   const [deductions, setDeductions] = useState([]);
   const [sickLeaveDeduction, setSickLeaveDeduction] = useState('');
+  const [overtimeBasis, setOvertimeBasis] = useState('basicSalary');
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1');
+  const [fridayOvertimeBasis, setFridayOvertimeBasis] = useState('basicSalary');
+  const [fridayOvertimeMultiplier, setFridayOvertimeMultiplier] = useState('1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -128,7 +132,7 @@ function Settings() {
       const start = new Date(2025, 0, 1, startHours, startMinutes);
       let end = new Date(2025, 0, 1, endHours, endMinutes);
       if (end <= start) end.setDate(end.getDate() + 1);
-      return ((end - start) / (1000 * 60 * 60)).toFixed(1);
+      return ((end - start) / (1000 * 60 * 60)).toFixed(2);
     }
     return baseHours;
   };
@@ -200,6 +204,10 @@ function Settings() {
       setGracePeriod('');
       setDeductions([]);
       setSickLeaveDeduction('');
+      setOvertimeBasis('basicSalary');
+      setOvertimeMultiplier('1');
+      setFridayOvertimeBasis('basicSalary');
+      setFridayOvertimeMultiplier('1');
       return;
     }
 
@@ -216,6 +224,10 @@ function Settings() {
       setGracePeriod(shift.gracePeriod || '');
       setDeductions(shift.deductions || []);
       setSickLeaveDeduction(shift.sickLeaveDeduction || '');
+      setOvertimeBasis(shift.overtimeBasis || 'basicSalary');
+      setOvertimeMultiplier(shift.overtimeMultiplier || '1');
+      setFridayOvertimeBasis(shift.fridayOvertimeBasis || 'basicSalary');
+      setFridayOvertimeMultiplier(shift.fridayOvertimeMultiplier || '1');
     }
   };
 
@@ -276,10 +288,12 @@ function Settings() {
         let [endHours, endMinutes] = endTime.split(':').map(Number);
         const start = new Date(2025, 0, 1, startHours, startMinutes);
         let end = new Date(2025, 0, 1, endHours, endMinutes);
-        if (end <= start) end.setDate(end.getDate() + 1);
+        if (shiftType === 'evening' && end <= start) {
+          end.setDate(end.getDate() + 1);
+        }
         const calculatedBaseHours = (end - start) / (1000 * 60 * 60);
         if (Math.abs(calculatedBaseHours - Number(baseHours)) > 0.1) {
-          setError('الساعات الأساسية يجب أن تتطابق مع الفرق بين وقت البداية والنهاية');
+          setError('الساعات الأساسية يجب أن تتطابق مع الفرق بين وقت البداية والنهاية (بحد أقصى تفاوت 0.1 ساعة)');
           setLoading(false);
           return;
         }
@@ -293,7 +307,9 @@ function Settings() {
           let [dedEndHours, dedEndMinutes] = deduction.end.split(':').map(Number);
           const dedStart = new Date(2025, 0, 1, dedStartHours, dedStartMinutes);
           let dedEnd = new Date(2025, 0, 1, dedEndHours, dedEndMinutes);
-          if (dedEnd <= dedStart) dedEnd.setDate(dedEnd.getDate() + 1);
+          if (shiftType === 'evening' && dedEnd <= dedStart) {
+            dedEnd.setDate(dedEnd.getDate() + 1);
+          }
           if (dedEnd <= dedStart) {
             setError('وقت نهاية الخصم يجب أن يكون بعد وقت البداية');
             setLoading(false);
@@ -342,7 +358,11 @@ function Settings() {
           gracePeriod,
           deductions,
           sickLeaveDeduction,
-          isCrossDay: shiftType === 'evening'
+          isCrossDay: shiftType === 'evening',
+          overtimeBasis,
+          overtimeMultiplier: Number(overtimeMultiplier),
+          fridayOvertimeBasis,
+          fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier)
         }),
       });
       const data = await response.json();
@@ -363,6 +383,10 @@ function Settings() {
           setGracePeriod('');
           setDeductions([]);
           setSickLeaveDeduction('');
+          setOvertimeBasis('basicSalary');
+          setOvertimeMultiplier('1');
+          setFridayOvertimeBasis('basicSalary');
+          setFridayOvertimeMultiplier('1');
         }, 1500);
       } else {
         setError(data.message || 'حدث خطأ أثناء تعديل الشيفت');
@@ -408,6 +432,10 @@ function Settings() {
             setGracePeriod('');
             setDeductions([]);
             setSickLeaveDeduction('');
+            setOvertimeBasis('basicSalary');
+            setOvertimeMultiplier('1');
+            setFridayOvertimeBasis('basicSalary');
+            setFridayOvertimeMultiplier('1');
           }, 1500);
         } else {
           setError(data.message || 'حدث خطأ أثناء حذف الشيفت');
@@ -517,6 +545,10 @@ function Settings() {
                         setBaseHours('');
                         setMaxOvertimeHours('');
                         setDeductions([]);
+                        setOvertimeBasis('basicSalary');
+                        setOvertimeMultiplier('1');
+                        setFridayOvertimeBasis('basicSalary');
+                        setFridayOvertimeMultiplier('1');
                       }}
                       className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
                       disabled
@@ -599,6 +631,23 @@ function Settings() {
                     />
                   </div>
                 )}
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أيام العمل</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.keys(reverseDaysMap).map((day) => (
+                      <label key={day} className="flex items-center space-x-2 space-x-reverse">
+                        <input
+                          type="checkbox"
+                          value={day}
+                          checked={workDays.includes(day)}
+                          onChange={handleWorkDaysChange}
+                          className="form-checkbox h-5 w-5 text-purple-500 focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-600">{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <div>
                   <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">فترة السماح (دقائق)</label>
                   <input
@@ -623,22 +672,55 @@ function Settings() {
                     <option value="full">يوم كامل</option>
                   </select>
                 </div>
-              </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أيام العمل</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((day) => (
-                    <div key={day} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        value={day}
-                        checked={workDays.includes(day)}
-                        onChange={handleWorkDaysChange}
-                        className="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-purple-500 focus:ring-purple-500"
-                      />
-                      <label className="text-gray-600 text-xs sm:text-sm">{day}</label>
-                    </div>
-                  ))}
+                <div>
+                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أساس حساب الساعات الإضافية</label>
+                  <select
+                    value={overtimeBasis}
+                    onChange={(e) => setOvertimeBasis(e.target.value)}
+                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    required
+                  >
+                    <option value="basicSalary">الراتب الأساسي</option>
+                    <option value="totalSalary">الراتب الإجمالي بالبدلات</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">معدل الساعات الإضافية</label>
+                  <select
+                    value={overtimeMultiplier}
+                    onChange={(e) => setOvertimeMultiplier(e.target.value)}
+                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    required
+                  >
+                    <option value="1">ساعة</option>
+                    <option value="1.5">ساعة ونص</option>
+                    <option value="2">ساعتين</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أساس حساب ساعات الجمعة الإضافية</label>
+                  <select
+                    value={fridayOvertimeBasis}
+                    onChange={(e) => setFridayOvertimeBasis(e.target.value)}
+                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    required
+                  >
+                    <option value="basicSalary">الراتب الأساسي</option>
+                    <option value="totalSalary">الراتب الإجمالي بالبدلات</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">معدل ساعات الجمعة الإضافية</label>
+                  <select
+                    value={fridayOvertimeMultiplier}
+                    onChange={(e) => setFridayOvertimeMultiplier(e.target.value)}
+                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    required
+                  >
+                    <option value="1">ساعة</option>
+                    <option value="1.5">ساعة ونص</option>
+                    <option value="2">ساعتين</option>
+                  </select>
                 </div>
               </div>
               <div className="mb-4 sm:mb-6">

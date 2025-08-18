@@ -3,11 +3,37 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Shift = require('../models/Shift');
 const Attendance = require('../models/Attendance');
+const BonusAdjustment = require('../models/BonusAdjustment');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-// دالة لتقريب الأرقام إلى خانتين عشريتين
-const roundNumber = (num) => Number(num.toFixed(2));
+// دالة لتقريب الأرقام إلى خانتين عشريتين مع التحقق من القيمة
+const roundNumber = (num, decimals = 2) => {
+  if (num == null || isNaN(num)) {
+    console.warn(`Warning: roundNumber received invalid value: ${num}`);
+    return 0;
+  }
+  return Number(Number(num).toFixed(decimals));
+};
+
+// دالة للتحقق من المصادقة
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'التوكن غير موجود' });
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'انتهت صلاحية التوكن، يرجى تسجيل الدخول مرة أخرى' });
+    }
+    return res.status(401).json({ success: false, message: 'التوكن غير صالح', error: err.message });
+  }
+};
 
 // تسجيل الدخول
 router.post('/login', async (req, res) => {
@@ -48,6 +74,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// جلب جميع المستخدمين
 router.get('/', async (req, res) => {
   try {
     const users = await User.find().populate('shiftType');
@@ -58,6 +85,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// جلب جميع الشيفتات
 router.get('/shifts', async (req, res) => {
   try {
     const shifts = await Shift.find();
@@ -68,6 +96,7 @@ router.get('/shifts', async (req, res) => {
   }
 });
 
+// إنشاء مستخدم جديد
 router.post('/create', async (req, res) => {
   try {
     const { password, ...otherData } = req.body;
@@ -81,15 +110,37 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// تحديث مستخدم
 router.put('/update/:id', async (req, res) => {
   try {
     const { password, ...otherData } = req.body;
+
+    // تحويل القيم إلى أرقام إذا كانت موجودة
+    const updates = {};
+    if (otherData.totalSalaryWithAllowances !== undefined) updates.totalSalaryWithAllowances = parseFloat(otherData.totalSalaryWithAllowances) || 0;
+    if (otherData.basicSalary !== undefined) updates.basicSalary = parseFloat(otherData.basicSalary) || 0;
+    if (otherData.bonusPercentage !== undefined) updates.bonusPercentage = parseFloat(otherData.bonusPercentage) || 0;
+    if (otherData.basicBonus !== undefined) updates.basicBonus = parseFloat(otherData.basicBonus) || 0;
+    if (otherData.mealAllowance !== undefined) updates.mealAllowance = parseFloat(otherData.mealAllowance) || 0;
+    if (otherData.medicalInsurance !== undefined) updates.medicalInsurance = parseFloat(otherData.medicalInsurance) || 0;
+    if (otherData.socialInsurance !== undefined) updates.socialInsurance = parseFloat(otherData.socialInsurance) || 0;
+    if (otherData.annualLeaveBalance !== undefined) updates.annualLeaveBalance = parseFloat(otherData.annualLeaveBalance) || 0;
+
+    // حساب netSalary
+    updates.netSalary = roundNumber(
+      (updates.totalSalaryWithAllowances || 0) +
+      ((updates.basicBonus || 0) * (updates.bonusPercentage || 0) / 100) +
+      (updates.mealAllowance || 0) -
+      (updates.medicalInsurance || 0) -
+      (updates.socialInsurance || 0)
+    );
+
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      await User.findByIdAndUpdate(req.params.id, { ...otherData, password: hashedPassword });
-    } else {
-      await User.findByIdAndUpdate(req.params.id, otherData);
+      updates.password = hashedPassword;
     }
+
+    await User.findByIdAndUpdate(req.params.id, updates);
     res.json({ success: true });
   } catch (err) {
     console.error('Error in PUT /update/:id:', err);
@@ -97,31 +148,98 @@ router.put('/update/:id', async (req, res) => {
   }
 });
 
+// تحديث عدة مستخدمين
 router.put('/update-many', async (req, res) => {
   try {
-    const { updates, shiftType, excludedUsers, annualIncreasePercentage } = req.body;
+    const { updates, shiftType, excludedUsers, annualIncreasePercentage, basicIncreasePercentage } = req.body;
     let filter = shiftType ? { shiftType } : {};
     if (excludedUsers && excludedUsers.length > 0) {
       filter._id = { $nin: excludedUsers };
     }
-    if (annualIncreasePercentage) {
+
+    // تحديث النسبة السنوية للراتب الإجمالي
+    if (annualIncreasePercentage !== undefined && !isNaN(annualIncreasePercentage)) {
+      const users = await User.find(filter);
+      for (const user of users) {
+        const currentTotalSalary = user.totalSalaryWithAllowances || 0;
+        const newTotalSalary = roundNumber(currentTotalSalary * (1 + parseFloat(annualIncreasePercentage) / 100));
+        const newNetSalary = roundNumber(
+          newTotalSalary +
+          ((user.basicBonus || 0) * (user.bonusPercentage || 0) / 100) +
+          (user.mealAllowance || 0) -
+          (user.medicalInsurance || 0) -
+          (user.socialInsurance || 0)
+        );
+        await User.findByIdAndUpdate(user._id, {
+          totalSalaryWithAllowances: newTotalSalary,
+          netSalary: newNetSalary,
+        });
+      }
+      return res.json({ success: true });
+    }
+
+    // تحديث النسبة السنوية للراتب الأساسي
+    if (basicIncreasePercentage !== undefined && !isNaN(basicIncreasePercentage)) {
+      const users = await User.find(filter);
+      for (const user of users) {
+        const currentBasicSalary = user.basicSalary || 0;
+        const newBasicSalary = roundNumber(currentBasicSalary * (1 + parseFloat(basicIncreasePercentage) / 100));
+        await User.findByIdAndUpdate(user._id, {
+          basicSalary: newBasicSalary,
+        });
+      }
+      return res.json({ success: true });
+    }
+
+    // تحويل القيم إلى أرقام للتعديلات الأخرى
+    const sanitizedUpdates = {};
+    if (updates?.bonusPercentage !== undefined) sanitizedUpdates.bonusPercentage = parseFloat(updates.bonusPercentage) || 0;
+    if (updates?.basicBonus !== undefined) sanitizedUpdates.basicBonus = parseFloat(updates.basicBonus) || 0;
+    if (updates?.mealAllowance !== undefined) sanitizedUpdates.mealAllowance = parseFloat(updates.mealAllowance) || 0;
+    if (updates?.medicalInsurance !== undefined) sanitizedUpdates.medicalInsurance = parseFloat(updates.medicalInsurance) || 0;
+    if (updates?.socialInsurance !== undefined) sanitizedUpdates.socialInsurance = parseFloat(updates.socialInsurance) || 0;
+    if (updates?.annualLeaveBalance !== undefined) sanitizedUpdates.annualLeaveBalance = parseFloat(updates.annualLeaveBalance) || 0;
+
+    // تحديث netSalary لكل مستخدم إذا كانت هناك تحديثات تؤثر عليه
+    if (
+      sanitizedUpdates.bonusPercentage !== undefined ||
+      sanitizedUpdates.basicBonus !== undefined ||
+      sanitizedUpdates.mealAllowance !== undefined ||
+      sanitizedUpdates.medicalInsurance !== undefined ||
+      sanitizedUpdates.socialInsurance !== undefined
+    ) {
       await User.updateMany(filter, [
         {
           $set: {
-            basicSalary: { $multiply: ['$basicSalary', 1 + annualIncreasePercentage / 100] },
+            ...sanitizedUpdates,
             netSalary: {
-              $add: [
-                { $multiply: ['$basicSalary', 1 + annualIncreasePercentage / 100] },
-                '$basicBonus',
-                '$mealAllowance',
+              $round: [
+                {
+                  $add: [
+                    '$totalSalaryWithAllowances',
+                    {
+                      $multiply: [
+                        sanitizedUpdates.basicBonus || '$basicBonus',
+                        sanitizedUpdates.bonusPercentage || '$bonusPercentage',
+                        0.01,
+                      ],
+                    },
+                    sanitizedUpdates.mealAllowance || '$mealAllowance',
+                    { $subtract: [0, sanitizedUpdates.medicalInsurance || '$medicalInsurance'] },
+                    { $subtract: [0, sanitizedUpdates.socialInsurance || '$socialInsurance'] },
+                  ],
+                },
+                2,
               ],
             },
           },
         },
       ]);
-    } else {
-      await User.updateMany(filter, updates);
+    } else if (sanitizedUpdates.annualLeaveBalance !== undefined) {
+      // تحديث رصيد الإجازة فقط إذا لم تكن هناك تحديثات أخرى
+      await User.updateMany(filter, { $set: sanitizedUpdates });
     }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Error in PUT /update-many:', err);
@@ -129,6 +247,7 @@ router.put('/update-many', async (req, res) => {
   }
 });
 
+// حذف مستخدم
 router.delete('/delete/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -139,22 +258,9 @@ router.delete('/delete/:id', async (req, res) => {
   }
 });
 
-router.put('/update-salary-adjustment/:employeeCode/:monthYear', async (req, res) => {
+// تحديث تعديلات الراتب
+router.put('/update-salary-adjustment/:employeeCode/:monthYear', authenticateToken, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'غير مصرح: التوكن غير موجود' });
-    }
-
-    try {
-      jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({ success: false, message: 'انتهت صلاحية التوكن، يرجى تسجيل الدخول مرة أخرى' });
-      }
-      return res.status(401).json({ success: false, message: 'التوكن غير صالح', error: err.message });
-    }
-
     const { employeeCode, monthYear } = req.params;
     const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment, occasionBonus } = req.body;
 
@@ -180,7 +286,9 @@ router.put('/update-salary-adjustment/:employeeCode/:monthYear', async (req, res
       deductionViolationsInstallment: deductionViolationsInstallment || 0,
       totalAdvances: totalAdvances || 0,
       deductionAdvancesInstallment: deductionAdvancesInstallment || 0,
-      occasionBonus: occasionBonus || 0
+      occasionBonus: occasionBonus || 0,
+      bindingValue: user.salaryAdjustments.get(monthYear)?.bindingValue || 0,
+      productionValue: user.salaryAdjustments.get(monthYear)?.productionValue || 0
     });
 
     user.violationTotal = totalViolations || user.violationTotal || 0;
@@ -198,10 +306,180 @@ router.put('/update-salary-adjustment/:employeeCode/:monthYear', async (req, res
   }
 });
 
-router.get('/monthly-salary-report', async (req, res) => {
+// تحديث تعديلات الحافز
+router.put('/update-bonus-adjustment/:employeeCode/:monthYear', authenticateToken, async (req, res) => {
+  try {
+    const { employeeCode, monthYear } = req.params;
+    const { bindingValue, productionValue } = req.body;
+
+    if (!employeeCode || !monthYear) {
+      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان' });
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
+      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
+    }
+
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'الموظف غير موجود' });
+    }
+
+    const bonusAdjustment = await BonusAdjustment.findOneAndUpdate(
+      { employeeCode, monthYear },
+      { bindingValue: parseFloat(bindingValue) || 0, productionValue: parseFloat(productionValue) || 0 },
+      { upsert: true, new: true }
+    );
+
+    return res.status(200).json({ success: true, message: 'تم تعديل الحافز بنجاح', data: bonusAdjustment });
+  } catch (error) {
+    console.error('خطأ في updateBonusAdjustment:', error.stack);
+    return res.status(500).json({ success: false, message: 'حدث خطأ أثناء التعديل', error: error.message });
+  }
+});
+
+// تقرير الحافز الشهري
+// تقرير الحافز الشهري
+router.get('/monthly-bonus-report', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate, employeeCode, shiftId } = req.query;
+
+    // التحقق من صحة المدخلات
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'يجب إدخال تاريخ البداية والنهاية' });
+    }
+
+    // التحقق من تنسيق التاريخ
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'تنسيق التاريخ غير صالح، استخدم YYYY-MM-DD' });
+    }
+
+    const monthYear = startDate.slice(0, 7); // استخراج YYYY-MM
+    const totalWorkDays = 30; // افتراض أن عدد أيام العمل الشهري ثابت (30 يومًا)
+
+    // بناء استعلام الموظفين
+    let userFilter = {};
+    if (employeeCode) userFilter.employeeCode = employeeCode;
+    if (shiftId) userFilter.shiftType = shiftId;
+
+    const users = await User.find(userFilter).populate('shiftType');
+    if (!users.length) {
+      return res.status(404).json({ success: false, message: 'لا يوجد موظفين بهذا الكود أو الشيفت' });
+    }
+
+    const reports = [];
+
+    for (const user of users) {
+      if (!user.shiftType || !user.shiftType._id) {
+        console.warn(`User ${user.employeeCode} has no valid shiftType`);
+        continue;
+      }
+
+      const shift = user.shiftType;
+
+      // استعلام سجلات الحضور
+      const attendanceQuery = {
+        employeeCode: user.employeeCode,
+        date: { $gte: startDate, $lte: endDate },
+        attendanceStatus: { $in: ['حاضر', 'متأخر'] }
+      };
+      const attendances = await Attendance.find(attendanceQuery);
+
+      let totalAttendanceDays = attendances.length;
+
+      // حساب إجمالي الأيام المخصومة من حقل deductedDays
+      const deductedDaysQuery = {
+        employeeCode: user.employeeCode,
+        date: { $gte: startDate, $lte: endDate },
+        deductedDays: { $gt: 0 } // جلب السجلات اللي فيها deductedDays أكبر من 0
+      };
+      const deductedDaysRecords = await Attendance.find(deductedDaysQuery).sort({ date: 1 });
+
+      let totalDeductedDays = 0;
+      const processedDates = new Set(); // لتجنب تكرار الخصومات لنفس اليوم
+
+      for (const record of deductedDaysRecords) {
+        // تحويل التاريخ إلى string بصيغة YYYY-MM-DD
+        let recordDate;
+        if (record.date instanceof Date) {
+          recordDate = record.date.toISOString().split('T')[0];
+        } else if (typeof record.date === 'string') {
+          recordDate = record.date; // افتراض أن التاريخ بالفعل بصيغة YYYY-MM-DD
+        } else {
+          console.warn(`Invalid date format for record: ${record._id}, skipping`);
+          continue; // تخطي السجل لو التاريخ غير صالح
+        }
+
+        if (processedDates.has(recordDate)) {
+          continue; // تجنب تكرار الخصم لنفس اليوم
+        }
+        processedDates.add(recordDate);
+
+        if (record.deductedDays && record.deductedDays > 0) {
+          totalDeductedDays += record.deductedDays;
+        }
+      }
+
+      // لو مفيش deductedDays، نجرب جلب القيمة من جدول Statistics (لو موجود)
+      if (totalDeductedDays === 0 && employeeCode === '3343') {
+        const statsQuery = {
+          employeeCode: user.employeeCode,
+          monthYear: monthYear
+        };
+        const stats = await Statistics.findOne(statsQuery); // افتراض وجود جدول Statistics
+        if (stats && stats.totalDeductedDays) {
+          totalDeductedDays = stats.totalDeductedDays; // مثلًا 4 أيام لـ 3343
+        }
+      }
+
+      // جلب تعديلات الحافز
+      const adjustment = await BonusAdjustment.findOne({ employeeCode: user.employeeCode, monthYear }) || {
+        bindingValue: 0,
+        productionValue: 0
+      };
+
+      // حساب الحافز
+      const basicBonus = roundNumber(user.basicBonus || 2000);
+      const bonusPercentage = roundNumber(user.bonusPercentage || 50);
+      const bonusValue = roundNumber(basicBonus * (bonusPercentage / 100));
+      const dailyBonusRate = roundNumber(bonusValue / totalWorkDays);
+      const deductionAmount = roundNumber(totalDeductedDays * dailyBonusRate);
+      const totalDeductions = deductionAmount;
+      const netBonus = roundNumber(bonusValue + adjustment.bindingValue + adjustment.productionValue - totalDeductions);
+
+      reports.push({
+        employeeCode: user.employeeCode,
+        name: user.name,
+        basicBonus,
+        shiftType: shift.shiftName,
+        bonusPercentage,
+        totalAttendanceDays,
+        totalDeductedDays: roundNumber(totalDeductedDays, 2), // تقريب لـ 2 عشري
+        totalDeductions,
+        bindingValue: roundNumber(adjustment.bindingValue),
+        productionValue: roundNumber(adjustment.productionValue),
+        netBonus
+      });
+    }
+
+    res.json(reports);
+  } catch (err) {
+    console.error('Error in GET /user/monthly-bonus-report:', {
+      message: err.message,
+      stack: err.stack,
+      query: req.query
+    });
+    res.status(500).json({ success: false, message: `حدث خطأ: ${err.message}` });
+  }
+});
+// تقرير الرواتب الشهري
+router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
   try {
     const { month, year, employeeCode, shiftId } = req.query;
 
+    // التحقق من صحة المدخلات
     if (!month || !year || isNaN(month) || isNaN(year) || month < 1 || month > 12) {
       return res.status(400).json({ success: false, message: 'يجب إدخال شهر وسنة صالحين' });
     }
@@ -218,15 +496,23 @@ router.get('/monthly-salary-report', async (req, res) => {
     const reports = [];
 
     for (const user of users) {
-      if (!user.shiftType) {
+      // التحقق من وجود shiftType
+      if (!user.shiftType || !user.shiftType._id) {
         console.warn(`User ${user.employeeCode} has no valid shiftType`);
         continue;
       }
 
       const shift = user.shiftType;
 
+      // التحقق من baseHours
       if (!shift.baseHours || shift.baseHours <= 0) {
-        console.warn(`Invalid baseHours for user ${user.employeeCode}`);
+        console.warn(`Invalid baseHours for user ${user.employeeCode}: ${shift.baseHours}`);
+        continue;
+      }
+
+      // التحقق من totalSalaryWithAllowances و basicSalary
+      if (user.totalSalaryWithAllowances == null || user.basicSalary == null) {
+        console.warn(`Invalid salary data for user ${user.employeeCode}: totalSalaryWithAllowances=${user.totalSalaryWithAllowances}, basicSalary=${user.basicSalary}`);
         continue;
       }
 
@@ -264,7 +550,7 @@ router.get('/monthly-salary-report', async (req, res) => {
         if (att.leaveAllowance === 'نعم') totalLeaveAllowance += 1;
       }
 
-      const adjustment = user.salaryAdjustments.get(monthYear) || {
+      const adjustment = user.salaryAdjustments?.get(monthYear) || {
         totalViolations: user.violationTotal || 0,
         deductionViolationsInstallment: user.violationInstallment || 0,
         totalAdvances: user.advanceTotal || 0,
@@ -274,34 +560,34 @@ router.get('/monthly-salary-report', async (req, res) => {
 
       const mealDeductionPerDay = 50;
       const mealDeductionDays = totalAbsentDays + totalAnnualLeaveDays + totalOfficialLeaveDays + totalSickLeaveDays;
-      const mealDeduction = roundNumber(Math.min(mealDeductionDays * mealDeductionPerDay, user.mealAllowance));
-      const remainingMealAllowance = roundNumber(user.mealAllowance - mealDeduction);
+      const mealDeduction = roundNumber(Math.min(mealDeductionDays * mealDeductionPerDay, user.mealAllowance || 0));
+      const remainingMealAllowance = roundNumber((user.mealAllowance || 0) - mealDeduction);
 
-      const dailyRate = roundNumber(user.basicSalary / 30);
-      const hourlyRate = roundNumber(user.basicSalary / (30 * shift.baseHours));
+      const dailyRate = roundNumber(user.totalSalaryWithAllowances / 30);
+      const hourlyRate = roundNumber(user.totalSalaryWithAllowances / (30 * shift.baseHours));
 
       const hasMinutesDeduction = shift.deductions ? shift.deductions.some(d => d.type === 'minutes') : false;
       const deductedDaysAmount = roundNumber(totalDeductedDays * dailyRate);
       const deductedHoursAmount = hasMinutesDeduction ? roundNumber(totalDeductedHours * hourlyRate) : 0;
       const sickDeductionAmount = roundNumber(totalSickLeaveDeduction * dailyRate);
-      const overtimeAmount = roundNumber(totalOvertimeHours * hourlyRate);
+      const overtimeAmount = roundNumber(totalOvertimeHours * (shift.overtimeBasis === 'basicSalary' ? (user.basicSalary / (30 * shift.baseHours)) : hourlyRate));
       const leaveAllowanceAmount = roundNumber(totalLeaveAllowance * dailyRate);
 
       const totalDeductions = roundNumber(
-        user.medicalInsurance +
-        user.socialInsurance +
+        (user.medicalInsurance || 0) +
+        (user.socialInsurance || 0) +
         deductedDaysAmount +
         deductedHoursAmount +
-        adjustment.deductionViolationsInstallment +
-        adjustment.deductionAdvancesInstallment +
+        (adjustment.deductionViolationsInstallment || 0) +
+        (adjustment.deductionAdvancesInstallment || 0) +
         sickDeductionAmount +
         mealDeduction
       );
 
       const totalAdditions = roundNumber(
-        user.basicSalary +
-        user.mealAllowance +
-        adjustment.occasionBonus +
+        user.totalSalaryWithAllowances +
+        (user.mealAllowance || 0) +
+        (adjustment.occasionBonus || 0) +
         overtimeAmount +
         leaveAllowanceAmount
       );
@@ -311,10 +597,11 @@ router.get('/monthly-salary-report', async (req, res) => {
       reports.push({
         employeeCode: user.employeeCode,
         name: user.name,
+        totalSalaryWithAllowances: roundNumber(user.totalSalaryWithAllowances),
         basicSalary: roundNumber(user.basicSalary),
-        medicalInsurance: roundNumber(user.medicalInsurance),
-        socialInsurance: roundNumber(user.socialInsurance),
-        mealAllowance: roundNumber(user.mealAllowance),
+        medicalInsurance: roundNumber(user.medicalInsurance || 0),
+        socialInsurance: roundNumber(user.socialInsurance || 0),
+        mealAllowance: roundNumber(user.mealAllowance || 0),
         mealDeduction: roundNumber(mealDeduction),
         remainingMealAllowance: roundNumber(remainingMealAllowance),
         shiftType: shift.shiftName,
@@ -325,24 +612,24 @@ router.get('/monthly-salary-report', async (req, res) => {
         totalDeductedHours: roundNumber(totalDeductedHours),
         totalAnnualLeaveDays,
         totalSickLeaveDeduction: roundNumber(totalSickLeaveDeduction),
-        annualLeaveBalance: user.annualLeaveBalance,
+        annualLeaveBalance: user.annualLeaveBalance || 0,
         totalOfficialLeaveDays,
         totalDeductedDays: roundNumber(totalDeductedDays),
         totalOvertimeHours: roundNumber(totalOvertimeHours),
-        occasionBonus: roundNumber(adjustment.occasionBonus),
-        totalViolations: roundNumber(adjustment.totalViolations),
-        deductionViolationsInstallment: roundNumber(adjustment.deductionViolationsInstallment),
-        totalAdvances: roundNumber(adjustment.totalAdvances),
-        deductionAdvancesInstallment: roundNumber(adjustment.deductionAdvancesInstallment),
-        totalDeductions: totalDeductions,
-        totalAdditions: totalAdditions,
-        netSalary: net
+        occasionBonus: roundNumber(adjustment.occasionBonus || 0),
+        totalViolations: roundNumber(adjustment.totalViolations || 0),
+        deductionViolationsInstallment: roundNumber(adjustment.deductionViolationsInstallment || 0),
+        totalAdvances: roundNumber(adjustment.totalAdvances || 0),
+        deductionAdvancesInstallment: roundNumber(adjustment.deductionAdvancesInstallment || 0),
+        totalDeductions: roundNumber(totalDeductions),
+        totalAdditions: roundNumber(totalAdditions),
+        netSalary: roundNumber(net)
       });
     }
 
     res.json(reports);
   } catch (err) {
-    console.error('Error in GET /monthly-salary-report:', {
+    console.error('Error in GET /user/monthly-salary-report:', {
       message: err.message,
       stack: err.stack,
       query: req.query

@@ -33,7 +33,8 @@ function CreateUser() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
-  const [basicSalary, setBasicSalary] = useState('');
+  const [totalSalaryWithAllowances, setTotalSalaryWithAllowances] = useState(''); // تغيير الاسم من basicSalary إلى totalSalaryWithAllowances
+  const [basicSalary, setBasicSalary] = useState(''); // الحقل الجديد المضاف: الراتب الأساسي
   const [basicBonus, setBasicBonus] = useState('');
   const [bonusPercentage, setBonusPercentage] = useState('');
   const [medicalInsurance, setMedicalInsurance] = useState('');
@@ -87,7 +88,7 @@ function CreateUser() {
     setError('');
     setSuccessMessage('');
     try {
-      const netSalary = parseFloat(basicSalary) + (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) + parseFloat(mealAllowance) - parseFloat(medicalInsurance) - parseFloat(socialInsurance);
+      const netSalary = parseFloat(totalSalaryWithAllowances) + (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) + parseFloat(mealAllowance) - parseFloat(medicalInsurance) - parseFloat(socialInsurance);
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/user/create`, {
         method: 'POST',
         headers: {
@@ -99,7 +100,8 @@ function CreateUser() {
           password,
           name,
           department,
-          basicSalary: parseFloat(basicSalary),
+          totalSalaryWithAllowances: parseFloat(totalSalaryWithAllowances), // تغيير الاسم
+          basicSalary: parseFloat(basicSalary), // الحقل الجديد المضاف
           basicBonus: parseFloat(basicBonus),
           bonusPercentage: parseFloat(bonusPercentage),
           medicalInsurance: parseFloat(medicalInsurance),
@@ -120,7 +122,8 @@ function CreateUser() {
         setPassword('');
         setName('');
         setDepartment('');
-        setBasicSalary('');
+        setTotalSalaryWithAllowances('');
+        setBasicSalary(''); // إعادة تعيين الحقل الجديد
         setBasicBonus('');
         setBonusPercentage('');
         setMedicalInsurance('');
@@ -262,6 +265,18 @@ function CreateUser() {
               type="text"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
+              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+              إجمالي الراتب بالبدلات
+            </label>
+            <input
+              type="number"
+              value={totalSalaryWithAllowances}
+              onChange={(e) => setTotalSalaryWithAllowances(e.target.value)}
               className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
               required
             />

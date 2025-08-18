@@ -1,3 +1,4 @@
+// frontend/src/components/MonthlySalaryReport.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Download } from 'lucide-react';
@@ -52,8 +53,8 @@ function MonthlySalaryReport() {
   const [shifts, setShifts] = useState([]);
   const [selectedShift, setSelectedShift] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
-  const [startDate, setStartDate] = useState('2025-08-01');
-  const [endDate, setEndDate] = useState('2025-08-31');
+  const [startDate, setStartDate] = useState('2025-05-01');
+  const [endDate, setEndDate] = useState('2025-05-31');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -88,7 +89,7 @@ function MonthlySalaryReport() {
     setError('');
     setSuccessMessage('');
     try {
-      let url = `${process.env.REACT_APP_API_URL}/api/user/monthly-salary-report?month=${startDate.split('-')[1]}&year=${startDate.split('-')[0]}`;
+      let url = `${process.env.REACT_APP_API_URL}/api/attendance/monthly-salary-report?yearMonth=${startDate.slice(0, 7)}`;
       if (employeeCode) url += `&employeeCode=${employeeCode}`;
       if (selectedShift) url += `&shiftId=${selectedShift}`;
       const response = await fetch(url, {
@@ -96,7 +97,14 @@ function MonthlySalaryReport() {
       });
       if (!response.ok) throw new Error('فشل في جلب التقرير');
       const reports = await response.json();
-      setData(reports);
+      const processedData = (reports.totals || []).map(row => ({
+        ...row,
+        totalOvertimeAmount: Number(row.totalOvertimeAmount || 0),
+        totalDeductions: Number(row.totalDeductions || 0),
+        finalSalary: Number(row.finalSalary || 0),
+        deductedDaysAmount: Number(row.deductedDaysAmount || 0),
+      }));
+      setData(processedData);
       setShowSuccessAnimation(true);
       setSuccessMessage('تم جلب التقرير بنجاح');
       setTimeout(() => setShowSuccessAnimation(false), 2000);
@@ -119,16 +127,16 @@ function MonthlySalaryReport() {
     setEditUser(user);
     setEditValues({
       totalViolations: user.totalViolations || 0,
-      deductionViolationsInstallment: user.deductionViolationsInstallment || 0,
-      totalAdvances: user.totalAdvances || 0,
-      deductionAdvancesInstallment: user.deductionAdvancesInstallment || 0,
+      violationDeduction: user.violationDeduction || 0,
+      totalLoans: user.totalLoans || 0,
+      loanDeduction: user.loanDeduction || 0,
     });
     setEditModalOpen(true);
   };
 
   const handleEditChange = (e) => {
     const value = e.target.value;
-    if (value === '' || value < 0) return; // منع القيم الفارغة أو السالبة
+    if (value === '' || value < 0) return;
     setEditValues({ ...editValues, [e.target.name]: Number(value) });
   };
 
@@ -141,14 +149,14 @@ function MonthlySalaryReport() {
       }
       if (
         editValues.totalViolations === undefined ||
-        editValues.deductionViolationsInstallment === undefined ||
-        editValues.totalAdvances === undefined ||
-        editValues.deductionAdvancesInstallment === undefined
+        editValues.violationDeduction === undefined ||
+        editValues.totalLoans === undefined ||
+        editValues.loanDeduction === undefined
       ) {
         throw new Error('يرجى ملء جميع الحقول بقيم صالحة');
       }
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${startDate.split('-')[0]}-${startDate.split('-')[1]}`,
+        `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${startDate.slice(0, 7)}`,
         {
           method: 'PUT',
           headers: {
@@ -176,40 +184,45 @@ function MonthlySalaryReport() {
   };
 
   const calculateTotals = () => {
-    return data.reduce((acc, row) => ({
-      basicSalary: acc.basicSalary + (row.basicSalary || 0),
-      medicalInsurance: acc.medicalInsurance + (row.medicalInsurance || 0),
-      socialInsurance: acc.socialInsurance + (row.socialInsurance || 0),
-      mealAllowance: acc.mealAllowance + (row.mealAllowance || 0),
-      mealDeduction: acc.mealDeduction + (row.mealDeduction || 0),
-      remainingMealAllowance: acc.remainingMealAllowance + (row.remainingMealAllowance || 0),
-      totalAttendanceDays: acc.totalAttendanceDays + (row.totalAttendanceDays || 0),
-      totalWeeklyOffDays: acc.totalWeeklyOffDays + (row.totalWeeklyOffDays || 0),
-      totalLeaveAllowance: acc.totalLeaveAllowance + (row.totalLeaveAllowance || 0),
-      totalAbsentDays: acc.totalAbsentDays + (row.totalAbsentDays || 0),
-      totalDeductedHours: acc.totalDeductedHours + (row.totalDeductedHours || 0),
-      totalAnnualLeaveDays: acc.totalAnnualLeaveDays + (row.totalAnnualLeaveDays || 0),
-      totalSickLeaveDeduction: acc.totalSickLeaveDeduction + (row.totalSickLeaveDeduction || 0),
-      annualLeaveBalance: acc.annualLeaveBalance + (row.annualLeaveBalance || 0),
-      totalOfficialLeaveDays: acc.totalOfficialLeaveDays + (row.totalOfficialLeaveDays || 0),
-      totalDeductedDays: acc.totalDeductedDays + (row.totalDeductedDays || 0),
-      totalOvertimeHours: acc.totalOvertimeHours + (row.totalOvertimeHours || 0),
-      occasionBonus: acc.occasionBonus + (row.occasionBonus || 0),
-      totalViolations: acc.totalViolations + (row.totalViolations || 0),
-      deductionViolationsInstallment: acc.deductionViolationsInstallment + (row.deductionViolationsInstallment || 0),
-      totalAdvances: acc.totalAdvances + (row.totalAdvances || 0),
-      deductionAdvancesInstallment: acc.deductionAdvancesInstallment + (row.deductionAdvancesInstallment || 0),
-      totalDeductions: acc.totalDeductions + (row.totalDeductions || 0),
-      totalAdditions: acc.totalAdditions + (row.totalAdditions || 0),
-      netSalary: acc.netSalary + (row.netSalary || 0),
-      employeeCode: '', // لصف الإجمالي
-      name: '', // لصف الإجمالي
-    }), {
+    return data.reduce((acc, row) => {
+      return {
+        basicSalary: acc.basicSalary + Number(row.basicSalary || 0),
+        totalSalaryWithAllowances: acc.totalSalaryWithAllowances + Number(row.totalSalaryWithAllowances || 0),
+        medicalInsurance: acc.medicalInsurance + Number(row.medicalInsurance || 0),
+        socialInsurance: acc.socialInsurance + Number(row.socialInsurance || 0),
+        mealAllowance: acc.mealAllowance + Number(row.mealAllowance || 0),
+        mealAllowanceDeduction: acc.mealAllowanceDeduction + Number(row.mealAllowanceDeduction || 0),
+        remainingMealAllowance: acc.remainingMealAllowance + Number(row.remainingMealAllowance || 0),
+        totalAttendanceDays: acc.totalAttendanceDays + Number(row.totalAttendanceDays || 0),
+        totalWeeklyOffDays: acc.totalWeeklyOffDays + Number(row.totalWeeklyOffDays || 0),
+        totalLeaveAllowance: acc.totalLeaveAllowance + Number(row.totalLeaveAllowance || 0),
+        totalAbsentDays: acc.totalAbsentDays + Number(row.totalAbsentDays || 0),
+        totalDeductedHours: acc.totalDeductedHours + Number(row.totalDeductedHours || 0),
+        totalAnnualLeaveDays: acc.totalAnnualLeaveDays + Number(row.totalAnnualLeaveDays || 0),
+        totalSickLeaveDeduction: acc.totalSickLeaveDeduction + Number(row.totalSickLeaveDeduction || 0),
+        annualLeaveBalance: acc.annualLeaveBalance + Number(row.annualLeaveBalance || 0),
+        totalOfficialLeaveDays: acc.totalOfficialLeaveDays + Number(row.totalOfficialLeaveDays || 0),
+        totalDeductedDays: acc.totalDeductedDays + Number(row.totalDeductedDays || 0),
+        totalOvertimeHours: acc.totalOvertimeHours + Number(row.totalOvertimeHours || 0),
+        specialBonus: acc.specialBonus + Number(row.specialBonus || 0),
+        totalViolations: acc.totalViolations + Number(row.totalViolations || 0),
+        violationDeduction: acc.violationDeduction + Number(row.violationDeduction || 0),
+        totalLoans: acc.totalLoans + Number(row.totalLoans || 0),
+        loanDeduction: acc.loanDeduction + Number(row.loanDeduction || 0),
+        totalDeductions: acc.totalDeductions + Number(row.totalDeductions || 0),
+        totalOvertimeAmount: acc.totalOvertimeAmount + Number(row.totalOvertimeAmount || 0),
+        finalSalary: acc.finalSalary + Number(row.finalSalary || 0),
+        deductedDaysAmount: acc.deductedDaysAmount + Number(row.deductedDaysAmount || 0),
+        employeeCode: '',
+        employeeName: '',
+      };
+    }, {
       basicSalary: 0,
+      totalSalaryWithAllowances: 0,
       medicalInsurance: 0,
       socialInsurance: 0,
       mealAllowance: 0,
-      mealDeduction: 0,
+      mealAllowanceDeduction: 0,
       remainingMealAllowance: 0,
       totalAttendanceDays: 0,
       totalWeeklyOffDays: 0,
@@ -222,16 +235,17 @@ function MonthlySalaryReport() {
       totalOfficialLeaveDays: 0,
       totalDeductedDays: 0,
       totalOvertimeHours: 0,
-      occasionBonus: 0,
+      specialBonus: 0,
       totalViolations: 0,
-      deductionViolationsInstallment: 0,
-      totalAdvances: 0,
-      deductionAdvancesInstallment: 0,
+      violationDeduction: 0,
+      totalLoans: 0,
+      loanDeduction: 0,
       totalDeductions: 0,
-      totalAdditions: 0,
-      netSalary: 0,
+      totalOvertimeAmount: 0,
+      finalSalary: 0,
+      deductedDaysAmount: 0,
       employeeCode: '',
-      name: '',
+      employeeName: '',
     });
   };
 
@@ -243,17 +257,17 @@ function MonthlySalaryReport() {
     setLoading(true);
     try {
       const totals = calculateTotals();
-      const reversedData = [...data].reverse(); // عكس ترتيب الصفوف
+      const reversedData = [...data].reverse();
       const excelData = [
         ...reversedData.map(row => ({
-          'الصافي': formatNumber(row.netSalary),
-          'إجمالي الإضافي': formatNumber(row.totalAdditions),
+          'الصافي': formatNumber(row.finalSalary),
+          'إجمالي الإضافي': formatNumber(row.totalOvertimeAmount),
           'إجمالي قيمة الخصومات': formatNumber(row.totalDeductions),
-          'خصم قسط السلف': formatNumber(row.deductionAdvancesInstallment),
-          'إجمالي السلف': formatNumber(row.totalAdvances),
-          'خصم قسط المخالفات': formatNumber(row.deductionViolationsInstallment),
+          'خصم قسط السلف': formatNumber(row.loanDeduction),
+          'إجمالي السلف': formatNumber(row.totalLoans),
+          'خصم قسط المخالفات': formatNumber(row.violationDeduction),
           'إجمالي المخالفات': formatNumber(row.totalViolations),
-          'منحة مناسبة': formatNumber(row.occasionBonus),
+          'منحة مناسبة': formatNumber(row.specialBonus),
           'إجمالي الساعات الإضافية': formatNumber(row.totalOvertimeHours),
           'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
           'إجمالي الإجازات الرسمية': formatNumber(row.totalOfficialLeaveDays),
@@ -265,25 +279,26 @@ function MonthlySalaryReport() {
           'إجمالي بدل الإجازة': formatNumber(row.totalLeaveAllowance),
           'إجمالي الإجازات الأسبوعية': formatNumber(row.totalWeeklyOffDays),
           'إجمالي أيام الحضور': formatNumber(row.totalAttendanceDays),
-          'نوع الشيفت': row.shiftType,
+          'نوع الشيفت': row.shiftName,
           'بدل الوجبة المتبقي': formatNumber(row.remainingMealAllowance),
-          'خصومات بدل الوجبة': formatNumber(row.mealDeduction),
+          'خصومات بدل الوجبة': formatNumber(row.mealAllowanceDeduction),
           'بدل الوجبة': formatNumber(row.mealAllowance),
           'التأمين الاجتماعي': formatNumber(row.socialInsurance),
           'التأمين الطبي': formatNumber(row.medicalInsurance),
+          'الراتب الإجمالي بالبدلات': formatNumber(row.totalSalaryWithAllowances),
           'الراتب الأساسي': formatNumber(row.basicSalary),
-          'اسم الموظف': row.name,
+          'اسم الموظف': row.employeeName,
           'كود الموظف': row.employeeCode,
         })),
         {
-          'الصافي': formatNumber(totals.netSalary),
-          'إجمالي الإضافي': formatNumber(totals.totalAdditions),
+          'الصافي': formatNumber(totals.finalSalary),
+          'إجمالي الإضافي': formatNumber(totals.totalOvertimeAmount),
           'إجمالي قيمة الخصومات': formatNumber(totals.totalDeductions),
-          'خصم قسط السلف': formatNumber(totals.deductionAdvancesInstallment),
-          'إجمالي السلف': formatNumber(totals.totalAdvances),
-          'خصم قسط المخالفات': formatNumber(totals.deductionViolationsInstallment),
+          'خصم قسط السلف': formatNumber(totals.loanDeduction),
+          'إجمالي السلف': formatNumber(totals.totalLoans),
+          'خصم قسط المخالفات': formatNumber(totals.violationDeduction),
           'إجمالي المخالفات': formatNumber(totals.totalViolations),
-          'منحة مناسبة': formatNumber(totals.occasionBonus),
+          'منحة مناسبة': formatNumber(totals.specialBonus),
           'إجمالي الساعات الإضافية': formatNumber(totals.totalOvertimeHours),
           'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
           'إجمالي الإجازات الرسمية': formatNumber(totals.totalOfficialLeaveDays),
@@ -297,10 +312,11 @@ function MonthlySalaryReport() {
           'إجمالي أيام الحضور': formatNumber(totals.totalAttendanceDays),
           'نوع الشيفت': '',
           'بدل الوجبة المتبقي': formatNumber(totals.remainingMealAllowance),
-          'خصومات بدل الوجبة': formatNumber(totals.mealDeduction),
+          'خصومات بدل الوجبة': formatNumber(totals.mealAllowanceDeduction),
           'بدل الوجبة': formatNumber(totals.mealAllowance),
           'التأمين الاجتماعي': formatNumber(totals.socialInsurance),
           'التأمين الطبي': formatNumber(totals.medicalInsurance),
+          'الراتب الإجمالي بالبدلات': formatNumber(totals.totalSalaryWithAllowances),
           'الراتب الأساسي': formatNumber(totals.basicSalary),
           'اسم الموظف': '',
           'كود الموظف': 'إجمالي',
@@ -338,10 +354,11 @@ function MonthlySalaryReport() {
       totalsRow.innerHTML = `
         <td class="py-4 px-6 text-right text-sm text-gray-800" colspan="2">إجمالي</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.basicSalary)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalSalaryWithAllowances)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.medicalInsurance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.socialInsurance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowance)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealDeduction)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowanceDeduction)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.remainingMealAllowance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800"></td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAttendanceDays)}</td>
@@ -355,14 +372,14 @@ function MonthlySalaryReport() {
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOfficialLeaveDays)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedDays)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeHours)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.occasionBonus)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.specialBonus)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalViolations)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.deductionViolationsInstallment)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAdvances)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.deductionAdvancesInstallment)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.violationDeduction)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLoans)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.loanDeduction)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductions)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAdditions)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.netSalary)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeAmount)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.finalSalary)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800"></td>
       `;
 
@@ -373,8 +390,8 @@ function MonthlySalaryReport() {
         useCORS: true,
         backgroundColor: '#FFFFFF',
         logging: false,
-        windowWidth: 420 * 3, // A3 width in pixels at 300 DPI
-        windowHeight: 297 * 3, // A3 height in pixels at 300 DPI
+        windowWidth: 420 * 3,
+        windowHeight: 297 * 3,
       });
 
       const doc = new jsPDF('landscape', 'mm', 'a3');
@@ -502,6 +519,7 @@ function MonthlySalaryReport() {
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">كود الموظف</th>
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">اسم الموظف</th>
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">الراتب الأساسي</th>
+                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">الراتب الإجمالي بالبدلات</th>
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">التأمين الطبي</th>
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">التأمين الاجتماعي</th>
                 <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">بدل الوجبة</th>
@@ -534,14 +552,15 @@ function MonthlySalaryReport() {
               {data.map((row, index) => (
                 <tr key={index} className="hover:bg-purple-50/50 transition duration-300 ease-in-out">
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{row.employeeCode}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.name}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.employeeName}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.basicSalary)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalSalaryWithAllowances)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.medicalInsurance)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.socialInsurance)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealDeduction)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealAllowanceDeduction)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.remainingMealAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.shiftType}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.shiftName}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAttendanceDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalWeeklyOffDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalLeaveAllowance)}</td>
@@ -553,14 +572,14 @@ function MonthlySalaryReport() {
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOfficialLeaveDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeHours)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.occasionBonus)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.specialBonus)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalViolations)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.deductionViolationsInstallment)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAdvances)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.deductionAdvancesInstallment)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.violationDeduction)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalLoans)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.loanDeduction)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductions)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAdditions)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.netSalary)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeAmount)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.finalSalary)}</td>
                   <td className="py-4 px-6 text-right">
                     <motion.button
                       variants={buttonVariants}
@@ -575,34 +594,35 @@ function MonthlySalaryReport() {
                 </tr>
               ))}
               <tr className="bg-purple-50 font-bold">
-                <td className="py-4 px-6 text-right text-sm text-gray-700" colSpan="2">إجمالي</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.basicSalary)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.medicalInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.socialInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.mealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.mealDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.remainingMealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700"></td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalAttendanceDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalWeeklyOffDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalLeaveAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalAbsentDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalDeductedHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalAnnualLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalSickLeaveDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.annualLeaveBalance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalOfficialLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalDeductedDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalOvertimeHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.occasionBonus)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalViolations)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.deductionViolationsInstallment)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalAdvances)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.deductionAdvancesInstallment)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalDeductions)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.totalAdditions)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(totals.netSalary)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-700"></td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800" colSpan="2">إجمالي</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.basicSalary)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalSalaryWithAllowances)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.medicalInsurance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.socialInsurance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowanceDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.remainingMealAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAttendanceDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalWeeklyOffDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLeaveAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAbsentDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedHours)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAnnualLeaveDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalSickLeaveDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.annualLeaveBalance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOfficialLeaveDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeHours)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.specialBonus)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalViolations)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.violationDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLoans)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.loanDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductions)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeAmount)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.finalSalary)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
               </tr>
             </tbody>
           </table>
@@ -627,7 +647,7 @@ function MonthlySalaryReport() {
               exit={{ opacity: 0, y: 50, transition: { duration: 0.3, ease: 'easeIn' } }}
               className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-2xl mx-4 border border-purple-100"
             >
-              <h3 className="text-2xl font-bold mb-6 text-right text-purple-600">تعديل بيانات الموظف: {editUser.name}</h3>
+              <h3 className="text-2xl font-bold mb-6 text-right text-purple-600">تعديل بيانات الموظف: {editUser.employeeName}</h3>
               {error && <p className="text-red-600 mb-4 text-sm text-right font-medium bg-red-50 p-3 rounded-xl">{error}</p>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -647,8 +667,8 @@ function MonthlySalaryReport() {
                   <label className="block text-sm font-medium text-gray-600 text-right mb-1">خصم قسط المخالفات</label>
                   <input
                     type="number"
-                    name="deductionViolationsInstallment"
-                    value={editValues.deductionViolationsInstallment}
+                    name="violationDeduction"
+                    value={editValues.violationDeduction}
                     onChange={handleEditChange}
                     className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
                     min="0"
@@ -660,8 +680,8 @@ function MonthlySalaryReport() {
                   <label className="block text-sm font-medium text-gray-600 text-right mb-1">إجمالي السلف</label>
                   <input
                     type="number"
-                    name="totalAdvances"
-                    value={editValues.totalAdvances}
+                    name="totalLoans"
+                    value={editValues.totalLoans}
                     onChange={handleEditChange}
                     className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
                     min="0"
@@ -673,8 +693,8 @@ function MonthlySalaryReport() {
                   <label className="block text-sm font-medium text-gray-600 text-right mb-1">خصم قسط السلف</label>
                   <input
                     type="number"
-                    name="deductionAdvancesInstallment"
-                    value={editValues.deductionAdvancesInstallment}
+                    name="loanDeduction"
+                    value={editValues.loanDeduction}
                     onChange={handleEditChange}
                     className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
                     min="0"

@@ -28,10 +28,11 @@ const attendanceSchema = new mongoose.Schema({
   sickLeaveDeduction: {
     type: String,
     enum: ['none', 'quarter', 'half', 'full'],
-    default: 'none' // القيمة الافتراضية هي 'none' بدلاً من null
+    default: 'none'
   },
   shiftId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift', required: true },
   isOfficialLeave: { type: Boolean, default: false },
+  isWorkedWeeklyOff: { type: Boolean, default: false }, // حقل جديد للإشارة إلى العمل في يوم إجازة أسبوعية
 }, { timestamps: true });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

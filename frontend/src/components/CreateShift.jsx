@@ -34,6 +34,10 @@ function CreateShift() {
   const [gracePeriod, setGracePeriod] = useState('');
   const [deductions, setDeductions] = useState([]);
   const [sickLeaveDeduction, setSickLeaveDeduction] = useState('');
+  const [overtimeBasis, setOvertimeBasis] = useState('basicSalary'); // جديد: أساس حساب الساعات الإضافية
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1'); // جديد: معدل الساعات الإضافية
+  const [fridayOvertimeBasis, setFridayOvertimeBasis] = useState('basicSalary'); // جديد: أساس يوم الجمعة
+  const [fridayOvertimeMultiplier, setFridayOvertimeMultiplier] = useState('1'); // جديد: معدل يوم الجمعة
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -164,6 +168,10 @@ function CreateShift() {
           gracePeriod,
           deductions,
           sickLeaveDeduction,
+          overtimeBasis, // جديد
+          overtimeMultiplier: Number(overtimeMultiplier), // جديد
+          fridayOvertimeBasis, // جديد
+          fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier), // جديد
         }),
       });
       const data = await response.json();
@@ -179,6 +187,10 @@ function CreateShift() {
         setGracePeriod('');
         setDeductions([]);
         setSickLeaveDeduction('');
+        setOvertimeBasis('basicSalary'); // إعادة تعيين
+        setOvertimeMultiplier('1');
+        setFridayOvertimeBasis('basicSalary');
+        setFridayOvertimeMultiplier('1');
       } else {
         setError('حدث خطأ أثناء إنشاء الشيفت');
       }
@@ -470,6 +482,56 @@ function CreateShift() {
                 <option value="half">نص يوم</option>
                 <option value="full">يوم كامل</option>
               </select>
+            </div>
+            {/* جديد: قسم حساب الساعات الإضافية */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                حساب الساعات الإضافية
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select
+                  value={overtimeBasis}
+                  onChange={(e) => setOvertimeBasis(e.target.value)}
+                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                >
+                  <option value="basicSalary">الراتب الأساسي</option>
+                  <option value="totalSalaryWithAllowances">الراتب الإجمالي بالبدلات</option>
+                </select>
+                <select
+                  value={overtimeMultiplier}
+                  onChange={(e) => setOvertimeMultiplier(e.target.value)}
+                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                >
+                  <option value="2">ساعة بساعتين</option>
+                  <option value="1">ساعة</option>
+                  <option value="1.5">ساعة ونص</option>
+                </select>
+              </div>
+            </div>
+            {/* جديد: قسم حساب الساعات الإضافية يوم الجمعة */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+                حساب الساعات الإضافية يوم الجمعة
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select
+                  value={fridayOvertimeBasis}
+                  onChange={(e) => setFridayOvertimeBasis(e.target.value)}
+                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                >
+                  <option value="basicSalary">الراتب الأساسي</option>
+                  <option value="totalSalaryWithAllowances">الراتب الإجمالي بالبدلات</option>
+                </select>
+                <select
+                  value={fridayOvertimeMultiplier}
+                  onChange={(e) => setFridayOvertimeMultiplier(e.target.value)}
+                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                >
+                  <option value="1">ساعة</option>
+                  <option value="1.5">ساعة ونص</option>
+                  <option value="2">ساعتين</option>
+                </select>
+              </div>
             </div>
           </div>
           <motion.button
