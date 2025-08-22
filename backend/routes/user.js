@@ -264,48 +264,108 @@ router.put('/update-salary-adjustment/:employeeCode/:monthYear', authenticateTok
     const { employeeCode, monthYear } = req.params;
     const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment, occasionBonus } = req.body;
 
+    // التحقق من وجود المعلمات المطلوبة
     if (!employeeCode || !monthYear) {
-      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان' });
+      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان', data: null });
     }
-
     if (!/^\d{4}-\d{2}$/.test(monthYear)) {
-      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
+      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM', data: null });
     }
 
+    // التحقق من وجود الموظف
     const user = await User.findOne({ employeeCode });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'الموظف غير موجود' });
+      return res.status(404).json({ success: false, message: 'الموظف غير موجود', data: null });
     }
 
+    // التحقق من صحة القيم
+    if (
+      totalViolations === undefined ||
+      deductionViolationsInstallment === undefined ||
+      totalAdvances === undefined ||
+      deductionAdvancesInstallment === undefined
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'جميع الحقول (إجمالي المخالفات، خصم المخالفات، إجمالي السلف، خصم السلف) مطلوبة',
+        data: null,
+      });
+    }
+    if (
+      totalViolations < 0 ||
+      deductionViolationsInstallment < 0 ||
+      totalAdvances < 0 ||
+      deductionAdvancesInstallment < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'القيم لا يمكن أن تكون سالبة',
+        data: null,
+      });
+    }
+    if (deductionViolationsInstallment > totalViolations) {
+      return res.status(400).json({
+        success: false,
+        message: 'قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات',
+        data: null,
+      });
+    }
+    if (deductionAdvancesInstallment > totalAdvances) {
+      return res.status(400).json({
+        success: false,
+        message: 'قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف',
+        data: null,
+      });
+    }
+
+    // تحديث تعديلات الراتب
     if (!user.salaryAdjustments) {
       user.salaryAdjustments = new Map();
     }
-
     user.salaryAdjustments.set(monthYear, {
-      totalViolations: totalViolations || 0,
-      deductionViolationsInstallment: deductionViolationsInstallment || 0,
-      totalAdvances: totalAdvances || 0,
-      deductionAdvancesInstallment: deductionAdvancesInstallment || 0,
-      occasionBonus: occasionBonus || 0,
+      totalViolations: Number(totalViolations) || 0,
+      deductionViolationsInstallment: Number(deductionViolationsInstallment) || 0,
+      totalAdvances: Number(totalAdvances) || 0,
+      deductionAdvancesInstallment: Number(deductionAdvancesInstallment) || 0,
+      occasionBonus: Number(occasionBonus) || 0,
       bindingValue: user.salaryAdjustments.get(monthYear)?.bindingValue || 0,
-      productionValue: user.salaryAdjustments.get(monthYear)?.productionValue || 0
+      productionValue: user.salaryAdjustments.get(monthYear)?.productionValue || 0,
+      remainingViolations: Number(totalViolations) - Number(deductionViolationsInstallment),
+      remainingAdvances: Number(totalAdvances) - Number(deductionAdvancesInstallment),
     });
 
-    user.violationTotal = totalViolations || user.violationTotal || 0;
-    user.violationInstallment = deductionViolationsInstallment || user.violationInstallment || 0;
-    user.advanceTotal = totalAdvances || user.advanceTotal || 0;
-    user.advanceInstallment = deductionAdvancesInstallment || user.advanceInstallment || 0;
-    user.occasionBonus = occasionBonus || user.occasionBonus || 0;
+    user.violationTotal = Number(totalViolations) || user.violationTotal || 0;
+    user.violationInstallment = Number(deductionViolationsInstallment) || user.violationInstallment || 0;
+    user.advanceTotal = Number(totalAdvances) || user.advanceTotal || 0;
+    user.advanceInstallment = Number(deductionAdvancesInstallment) || user.advanceInstallment || 0;
+    user.occasionBonus = Number(occasionBonus) || user.occasionBonus || 0;
 
     await user.save();
 
-    return res.status(200).json({ success: true, message: 'تم تعديل تعديلات الراتب بنجاح' });
+    // إرجاع الاستجابة مع البيانات المحدثة
+    return res.status(200).json({
+      success: true,
+      message: 'تم تعديل تعديلات الراتب بنجاح',
+      data: {
+        totalViolationsFull: Number(totalViolations) || 0,
+        violationDeduction: Number(deductionViolationsInstallment) || 0,
+        totalLoansFull: Number(totalAdvances) || 0,
+        loanDeduction: Number(deductionAdvancesInstallment) || 0,
+        totalViolations: Number(totalViolations) - Number(deductionViolationsInstallment),
+        totalLoans: Number(totalAdvances) - Number(deductionAdvancesInstallment),
+        occasionBonus: Number(occasionBonus) || 0,
+      },
+    });
   } catch (error) {
-    console.error('خطأ في updateSalaryAdjustment:', error.stack);
-    return res.status(500).json({ success: false, message: 'حدث خطأ أثناء التعديل', error: error.message });
+    console.error('خطأ في updateSalaryAdjustment:', error.message, error.stack);
+    return res.status(500).json({
+      success: false,
+      message: 'حدث خطأ أثناء التعديل',
+      error: error.message,
+      data: null,
+    });
   }
 });
-
 // تحديث تعديلات الحافز
 router.put('/update-bonus-adjustment/:employeeCode/:monthYear', authenticateToken, async (req, res) => {
   try {

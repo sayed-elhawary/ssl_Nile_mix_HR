@@ -14,12 +14,16 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
 }).then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
+const path = require('path');
+app.use('/Uploads', express.static(path.join(__dirname, 'Uploads')));
+
 
 const authRoutes = require('./routes/auth');
 const shiftRoutes = require('./routes/shift');
 const userRoutes = require('./routes/user');
 const attendanceRoutes = require('./routes/attendance');
-
+const violationRoutes = require('./routes/violations');
+app.use('/api/violations', violationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/shift', shiftRoutes);
 app.use('/api/user', userRoutes);

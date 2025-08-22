@@ -1,3 +1,4 @@
+// backend/models/User.js
 const mongoose = require('mongoose'); // Add this line to import mongoose
 
 const userSchema = new mongoose.Schema({
@@ -31,7 +32,9 @@ const userSchema = new mongoose.Schema({
       deductionAdvancesInstallment: { type: Number, default: 0 },
       occasionBonus: { type: Number, default: 0 },
       mealAllowance: { type: Number, default: 0 }, // Monthly meal allowance
-      mealDeduction: { type: Number, default: 0 } // Monthly meal deduction
+      mealDeduction: { type: Number, default: 0 }, // Monthly meal deduction
+      remainingViolations: { type: Number, default: 0 },
+      remainingAdvances: { type: Number, default: 0 }
     },
     default: {}
   }

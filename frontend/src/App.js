@@ -10,10 +10,10 @@ import Settings from './components/Settings';
 import AttendanceUpload from './components/AttendanceUpload';
 import MonthlySalaryReport from './components/MonthlySalaryReport';
 import MonthlyBonusReport from './components/MonthlyBonusReport';
+import Violations from './components/Violations';  // أضف هذا الـ import الجديد
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
-
   return (
     <Router>
       <div className="font-noto-sans-arabic">
@@ -55,11 +55,14 @@ function App() {
             path="/monthly-bonus-report"
             element={isAuthenticated ? <MonthlyBonusReport /> : <Navigate to="/login" />}
           />
+          <Route  // الـ route الجديدة
+            path="/violations"
+            element={isAuthenticated ? <Violations /> : <Navigate to="/login" />}
+          />
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
         </Routes>
       </div>
     </Router>
   );
 }
-
 export default App;

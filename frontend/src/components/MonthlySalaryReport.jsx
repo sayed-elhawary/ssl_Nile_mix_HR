@@ -1,4 +1,3 @@
-// frontend/src/components/MonthlySalaryReport.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, Download } from 'lucide-react';
@@ -103,6 +102,12 @@ function MonthlySalaryReport() {
         totalDeductions: Number(row.totalDeductions || 0),
         finalSalary: Number(row.finalSalary || 0),
         deductedDaysAmount: Number(row.deductedDaysAmount || 0),
+        violationDeduction: Number(row.violationDeduction || 0),
+        loanDeduction: Number(row.loanDeduction || 0),
+        totalViolations: Number(row.totalViolations || 0),
+        totalLoans: Number(row.totalLoans || 0),
+        totalViolationsFull: Number(row.totalViolationsFull || 0), // القيمة الكلية
+        totalLoansFull: Number(row.totalLoansFull || 0), // القيمة الكلية
       }));
       setData(processedData);
       setShowSuccessAnimation(true);
@@ -126,63 +131,115 @@ function MonthlySalaryReport() {
   const openEditModal = (user) => {
     setEditUser(user);
     setEditValues({
-      totalViolations: user.totalViolations || 0,
+      totalViolations: user.totalViolationsFull || user.totalViolations || 0, // استخدام القيمة الكلية
       violationDeduction: user.violationDeduction || 0,
-      totalLoans: user.totalLoans || 0,
+      totalLoans: user.totalLoansFull || user.totalLoans || 0, // استخدام القيمة الكلية
       loanDeduction: user.loanDeduction || 0,
     });
     setEditModalOpen(true);
   };
 
   const handleEditChange = (e) => {
-    const value = e.target.value;
-    if (value === '' || value < 0) return;
-    setEditValues({ ...editValues, [e.target.name]: Number(value) });
+    const { name, value } = e.target;
+    if (value === '' || Number(value) < 0) return;
+    setEditValues(prev => ({ ...prev, [name]: Number(value) }));
   };
 
-  const saveEdit = async () => {
-    if (!window.confirm('هل أنت متأكد من حفظ التغييرات؟')) return;
-    setLoading(true);
-    try {
-      if (!editUser || !editUser.employeeCode) {
-        throw new Error('كود الموظف غير موجود');
-      }
-      if (
-        editValues.totalViolations === undefined ||
-        editValues.violationDeduction === undefined ||
-        editValues.totalLoans === undefined ||
-        editValues.loanDeduction === undefined
-      ) {
-        throw new Error('يرجى ملء جميع الحقول بقيم صالحة');
-      }
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${startDate.slice(0, 7)}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}` },
-          body: JSON.stringify(editValues),
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'فشل في التعديل');
-      }
-      setShowSuccessAnimation(true);
-      setSuccessMessage('تم التعديل بنجاح');
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-        setEditModalOpen(false);
-        fetchReport();
-      }, 2000);
-    } catch (err) {
-      setError(`حدث خطأ أثناء التعديل: ${err.message}`);
-    } finally {
-      setLoading(false);
+
+const saveEdit = async () => {
+  if (!window.confirm('هل أنت متأكد من حفظ التغييرات؟')) return;
+  setLoading(true);
+  let responseData = null;
+  try {
+    if (!editUser || !editUser.employeeCode) {
+      throw new Error('كود الموظف غير موجود');
     }
-  };
+    if (
+      editValues.totalViolations === undefined ||
+      editValues.violationDeduction === undefined ||
+      editValues.totalLoans === undefined ||
+      editValues.loanDeduction === undefined
+    ) {
+      throw new Error('يرجى ملء جميع الحقول بقيم صالحة');
+    }
+    if (editValues.violationDeduction > editValues.totalViolations) {
+      throw new Error('قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات');
+    }
+    if (editValues.loanDeduction > editValues.totalLoans) {
+      throw new Error('قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف');
+    }
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${startDate.slice(0, 7)}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          totalViolations: Number(editValues.totalViolations),
+          deductionViolationsInstallment: Number(editValues.violationDeduction),
+          totalAdvances: Number(editValues.totalLoans),
+          deductionAdvancesInstallment: Number(editValues.loanDeduction),
+          occasionBonus: Number(editValues.occasionBonus) || 0,
+        }),
+      }
+    );
+    responseData = await response.json();
+    console.log('استجابة الـ API:', JSON.stringify(responseData, null, 2), 'رمز الحالة:', response.status);
 
+    if (!response.ok) {
+      throw new Error(`فشل طلب الـ API: رمز الحالة ${response.status}, الرسالة: ${responseData.message || 'غير معروف'}`);
+    }
+    if (!responseData.success) {
+      throw new Error(responseData.message || 'فشل في التعديل: الاستجابة غير ناجحة');
+    }
+    if (!responseData.data) {
+      throw new Error(responseData.message || 'البيانات المرتجعة من الـ API غير موجودة');
+    }
+
+    setData(prevData =>
+      prevData.map(row =>
+        row.employeeCode === editUser.employeeCode
+          ? {
+              ...row,
+              totalViolationsFull: Number(responseData.data.totalViolationsFull || 0),
+              totalViolations: Number(responseData.data.totalViolations || 0),
+              violationDeduction: Number(responseData.data.violationDeduction || 0),
+              totalLoansFull: Number(responseData.data.totalLoansFull || 0),
+              totalLoans: Number(responseData.data.totalLoans || 0),
+              loanDeduction: Number(responseData.data.loanDeduction || 0),
+              occasionBonus: Number(responseData.data.occasionBonus || 0),
+              totalDeductions:
+                Number(row.totalDeductions) -
+                Number(row.violationDeduction) -
+                Number(row.loanDeduction) +
+                Number(responseData.data.violationDeduction || 0) +
+                Number(responseData.data.loanDeduction || 0),
+              finalSalary:
+                Number(row.totalOvertimeAmount) -
+                (Number(row.totalDeductions) -
+                  Number(row.violationDeduction) -
+                  Number(row.loanDeduction) +
+                  Number(responseData.data.violationDeduction || 0) +
+                  Number(responseData.data.loanDeduction || 0)),
+            }
+          : row
+      )
+    );
+    setShowSuccessAnimation(true);
+    setSuccessMessage('تم التعديل بنجاح');
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+      setEditModalOpen(false);
+    }, 2000);
+  } catch (err) {
+    setError(`حدث خطأ أثناء التعديل: ${err.message}`);
+    console.error('خطأ في saveEdit:', err, 'استجابة الـ API:', responseData ? JSON.stringify(responseData, null, 2) : 'لم يتم استلام استجابة');
+  } finally {
+    setLoading(false);
+  }
+};
   const calculateTotals = () => {
     return data.reduce((acc, row) => {
       return {
@@ -340,14 +397,12 @@ function MonthlySalaryReport() {
       if (!tableElement) {
         throw new Error('تعذر العثور على عنصر الجدول');
       }
-
       const tempContainer = document.createElement('div');
       tempContainer.style.position = 'absolute';
       tempContainer.style.left = '-9999px';
       tempContainer.style.padding = '20px';
       tempContainer.style.backgroundColor = '#FFFFFF';
       tempContainer.innerHTML = tableElement.outerHTML;
-
       const totals = calculateTotals();
       const totalsRow = tempContainer.querySelector('table').insertRow();
       totalsRow.className = 'bg-purple-50 font-bold';
@@ -382,9 +437,7 @@ function MonthlySalaryReport() {
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.finalSalary)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800"></td>
       `;
-
       document.body.appendChild(tempContainer);
-
       const canvas = await html2canvas(tempContainer, {
         scale: 3,
         useCORS: true,
@@ -393,7 +446,6 @@ function MonthlySalaryReport() {
         windowWidth: 420 * 3,
         windowHeight: 297 * 3,
       });
-
       const doc = new jsPDF('landscape', 'mm', 'a3');
       doc.text('تقرير الرواتب الشهري', doc.internal.pageSize.getWidth() / 2, 10, { align: 'center' });
       const imgData = canvas.toDataURL('image/png');
@@ -402,7 +454,6 @@ function MonthlySalaryReport() {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       doc.addImage(imgData, 'PNG', 0, 15, pdfWidth, pdfHeight);
       doc.save('monthly_salary_report.pdf');
-
       document.body.removeChild(tempContainer);
     } catch (err) {
       setError(`حدث خطأ أثناء تصدير PDF: ${err.message}`);
@@ -421,6 +472,12 @@ function MonthlySalaryReport() {
     tap: { scale: 0.95, backgroundColor: '#A78BFA', transition: { duration: 0.3, ease: 'easeInOut' } },
   };
 
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeIn' } },
+  };
+
   const totals = calculateTotals();
 
   return (
@@ -435,7 +492,16 @@ function MonthlySalaryReport() {
           تقرير الرواتب الشهري
         </h2>
         {error && <p className="text-red-600 mb-4 text-sm text-right font-medium bg-red-50 p-3 rounded-xl">{error}</p>}
-        {successMessage && <p className="text-purple-600 mb-4 text-sm text-right font-medium bg-purple-50 p-3 rounded-xl">{successMessage}</p>}
+        {successMessage && (
+          <p className="text-purple-600 mb-4 text-sm text-right font-medium bg-purple-50 p-3 rounded-xl">
+            {successMessage}
+          </p>
+        )}
+        {showSuccessAnimation && (
+          <div className="flex justify-center mb-6">
+            <CustomCheckIcon />
+          </div>
+        )}
         <div className="mb-6 flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 md:space-x-reverse">
           <input
             type="text"
@@ -503,7 +569,9 @@ function MonthlySalaryReport() {
           >
             <option value="">كل الشيفتات</option>
             {shifts.map(shift => (
-              <option key={shift._id} value={shift._id}>{shift.shiftName} ({shift.shiftType})</option>
+              <option key={shift._id} value={shift._id}>
+                {shift.shiftName} ({shift.shiftType})
+              </option>
             ))}
           </select>
         </div>
@@ -595,137 +663,115 @@ function MonthlySalaryReport() {
               ))}
               <tr className="bg-purple-50 font-bold">
                 <td className="py-4 px-6 text-right text-sm text-gray-800" colSpan="2">إجمالي</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.basicSalary)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalSalaryWithAllowances)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.medicalInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.socialInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowanceDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.remainingMealAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.basicSalary)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalSalaryWithAllowances)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.medicalInsurance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.socialInsurance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowanceDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.remainingMealAllowance)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAttendanceDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalWeeklyOffDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLeaveAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAbsentDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAnnualLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalSickLeaveDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.annualLeaveBalance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOfficialLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.specialBonus)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalViolations)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.violationDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLoans)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.loanDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductions)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeAmount)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.finalSalary)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAttendanceDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalWeeklyOffDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalLeaveAllowance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAbsentDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedHours)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAnnualLeaveDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalSickLeaveDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.annualLeaveBalance)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOfficialLeaveDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedDays)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeHours)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.specialBonus)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalViolations)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.violationDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalLoans)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.loanDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductions)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeAmount)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.finalSalary)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
               </tr>
             </tbody>
           </table>
         </div>
         <AnimatePresence>
-          {showSuccessAnimation && (
+          {editModalOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.6, ease: 'easeOut' } }}
-              exit={{ opacity: 0, scale: 0.5, rotate: 90, transition: { duration: 0.4, ease: 'easeIn' } }}
-              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
             >
-              <CustomCheckIcon />
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+                <h3 className="text-xl font-bold text-purple-600 mb-4 text-right">تعديل بيانات الموظف</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">إجمالي المخالفات</label>
+                    <input
+                      type="number"
+                      name="totalViolations"
+                      value={editValues.totalViolations || ''}
+                      onChange={handleEditChange}
+                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">خصم قسط المخالفات</label>
+                    <input
+                      type="number"
+                      name="violationDeduction"
+                      value={editValues.violationDeduction || ''}
+                      onChange={handleEditChange}
+                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">إجمالي السلف</label>
+                    <input
+                      type="number"
+                      name="totalLoans"
+                      value={editValues.totalLoans || ''}
+                      onChange={handleEditChange}
+                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">خصم قسط السلف</label>
+                    <input
+                      type="number"
+                      name="loanDeduction"
+                      value={editValues.loanDeduction || ''}
+                      onChange={handleEditChange}
+                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-between">
+                  <motion.button
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                    onClick={saveEdit}
+                    className="bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md"
+                  >
+                    حفظ
+                  </motion.button>
+                  <motion.button
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                    onClick={() => setEditModalOpen(false)}
+                    className="bg-gray-300 text-gray-800 p-3 rounded-2xl hover:bg-gray-400 transition duration-300 text-sm font-medium shadow-md"
+                  >
+                    إلغاء
+                  </motion.button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-        {editModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }}
-              exit={{ opacity: 0, y: 50, transition: { duration: 0.3, ease: 'easeIn' } }}
-              className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-2xl mx-4 border border-purple-100"
-            >
-              <h3 className="text-2xl font-bold mb-6 text-right text-purple-600">تعديل بيانات الموظف: {editUser.employeeName}</h3>
-              {error && <p className="text-red-600 mb-4 text-sm text-right font-medium bg-red-50 p-3 rounded-xl">{error}</p>}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 text-right mb-1">إجمالي المخالفات</label>
-                  <input
-                    type="number"
-                    name="totalViolations"
-                    value={editValues.totalViolations}
-                    onChange={handleEditChange}
-                    className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 text-right mb-1">خصم قسط المخالفات</label>
-                  <input
-                    type="number"
-                    name="violationDeduction"
-                    value={editValues.violationDeduction}
-                    onChange={handleEditChange}
-                    className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 text-right mb-1">إجمالي السلف</label>
-                  <input
-                    type="number"
-                    name="totalLoans"
-                    value={editValues.totalLoans}
-                    onChange={handleEditChange}
-                    className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 text-right mb-1">خصم قسط السلف</label>
-                  <input
-                    type="number"
-                    name="loanDeduction"
-                    value={editValues.loanDeduction}
-                    onChange={handleEditChange}
-                    className="w-full p-3 border border-gray-200 rounded-2xl text-right shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 space-x-reverse mt-6">
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={saveEdit}
-                  className="bg-purple-600 text-white p-3 rounded-2xl font-medium shadow-md"
-                >
-                  حفظ التغييرات
-                </motion.button>
-                <motion.button
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                  onClick={() => setEditModalOpen(false)}
-                  className="bg-red-600 text-white p-3 rounded-2xl font-medium shadow-md"
-                >
-                  إلغاء
-                </motion.button>
-              </div>
-            </motion.div>
-          </div>
-        )}
       </motion.div>
     </div>
   );

@@ -102,6 +102,16 @@ const ReportIcon = () => (
   </div>
 );
 
+// أيقونة جديدة للمخالفات
+const ViolationIcon = () => (
+  <div className="h-8 w-8 sm:h-10 sm:w-10 text-red-600">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v2m0 4h.01M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
+      <path d="M12 17v.01" />
+    </svg>
+  </div>
+);
+
 function Dashboard() {
   const navigate = useNavigate();
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -121,18 +131,18 @@ function Dashboard() {
 
   const cardVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1, 
-      transition: { 
-        duration: 0.6, 
-        ease: [0.6, -0.05, 0.01, 0.99], 
-        type: 'spring', 
-        stiffness: 120, 
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.6,
+        ease: [0.6, -0.05, 0.01, 0.99],
+        type: 'spring',
+        stiffness: 120,
         damping: 15,
-        staggerChildren: 0.1 
-      } 
+        staggerChildren: 0.1
+      }
     },
     hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(124, 58, 237, 0.2)', transition: { duration: 0.3, ease: 'easeInOut' } },
     tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeInOut' } },
@@ -140,13 +150,13 @@ function Dashboard() {
 
   const cardChildVariants = {
     hidden: { opacity: 0, x: 20 },
-    visible: { 
-      opacity: 1, 
-      x: 0, 
-      transition: { 
-        duration: 0.4, 
-        ease: [0.6, -0.05, 0.01, 0.99] 
-      } 
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.6, -0.05, 0.01, 0.99]
+      }
     },
   };
 
@@ -291,6 +301,21 @@ function Dashboard() {
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900">تقرير الحافز الشهري</h3>
                 <p className="text-gray-600 text-sm sm:text-base">عرض تقرير الحوافز الشهرية مع الحسابات</p>
+              </div>
+            </Link>
+          </motion.div>
+          <motion.div
+            variants={cardChildVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={() => handleCardClick('/violations', 'جارٍ الانتقال إلى صفحة المخالفات')}
+            className="bg-white p-6 sm:p-8 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200/50"
+          >
+            <Link to="/violations" className="flex items-center space-x-4 space-x-reverse">
+              <ViolationIcon />
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">المخالفات</h3>
+                <p className="text-gray-600 text-sm sm:text-base">إدارة وتسجيل المخالفات</p>
               </div>
             </Link>
           </motion.div>

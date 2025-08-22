@@ -4,6 +4,7 @@ const Shift = require('../models/Shift');
 const xlsx = require('xlsx');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const SalaryAdjustment = require('../models/SalaryAdjustment');
 
 // دالة لتقريب الأرقام العشرية
 const roundNumber = (num, decimals = 1) => {
@@ -1600,30 +1601,25 @@ exports.applySickLeave = async (req, res) => {
 };
 
 
-
 exports.getMonthlySalaryReport = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
       return res.status(500).json({ success: false, message: 'فشل الاتصال بقاعدة البيانات', error: 'MongoDB غير متصل' });
     }
-
     const { yearMonth, employeeCode, shiftId } = req.query;
     if (!yearMonth) {
       return res.status(400).json({ success: false, message: 'يرجى تحديد الشهر (YYYY-MM)' });
     }
-
     const [year, month] = yearMonth.split('-');
     if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
       return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
     }
-
     const startDate = new Date(`${yearMonth}-01`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
     endDate.setDate(0);
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
-
     const query = employeeCode ? { employeeCode } : {};
     if (shiftId) {
       if (!mongoose.Types.ObjectId.isValid(shiftId)) {
@@ -1631,83 +1627,80 @@ exports.getMonthlySalaryReport = async (req, res) => {
       }
       query.shiftType = shiftId;
     }
-
     const users = await User.find(query);
     if (!users.length) {
       return res.status(404).json({ success: false, message: 'لا يوجد موظفين بهذا الكود أو الشيفت' });
     }
-
     const shifts = await Shift.find();
     if (!shifts.length) {
       return res.status(404).json({ success: false, message: 'لا توجد شيفتات مسجلة' });
     }
-
     const attendanceQuery = {
       date: { $gte: startDateStr, $lte: endDateStr },
       ...(employeeCode && { employeeCode }),
       ...(shiftId && { shiftId })
     };
-
     const attendances = await Attendance.find(attendanceQuery).sort({ employeeCode: 1, date: 1 });
-
     const allDates = getAllDatesInRange(startDateStr, endDateStr).sort();
     const result = [];
     const totalsByEmployee = {};
-
     for (const user of users) {
-      // التحقق من وجود shiftType صالح
       if (!user.shiftType || !mongoose.Types.ObjectId.isValid(user.shiftType)) {
         console.warn(`Invalid or missing shiftType for user ${user.employeeCode}. Skipping user.`);
         continue;
       }
-
       const shift = shifts.find((s) => s._id.toString() === user.shiftType?.toString());
       if (!shift) {
         console.warn(`Shift not found for user ${user.employeeCode}. Skipping user.`);
         continue;
       }
-
-      // التحقق من وجود workDays
       if (!shift.workDays || !Array.isArray(shift.workDays) || shift.workDays.length === 0) {
         console.warn(`workDays is not defined or empty for shift ${shift.shiftName} (user ${user.employeeCode}). Skipping user.`);
         continue;
       }
-
-      // جلب البيانات مباشرة من نموذج User
       const basicSalary = user.basicSalary;
       const totalSalaryWithAllowances = user.totalSalaryWithAllowances;
       const medicalInsurance = user.medicalInsurance || 0;
       const socialInsurance = user.socialInsurance || 0;
       const mealAllowance = user.mealAllowance || 0;
-
-      // التحقق من وجود القيم المطلوبة
       if (!basicSalary || !totalSalaryWithAllowances) {
         console.warn(`Missing required fields for user ${user.employeeCode}: basicSalary or totalSalaryWithAllowances`);
         continue;
       }
-
-      const salaryAdjustments = user.salaryAdjustments?.get(yearMonth) || {
-        totalViolations: 0,
-        deductionViolationsInstallment: 0,
-        totalAdvances: 0,
-        deductionAdvancesInstallment: 0,
-        occasionBonus: 0
-      };
-
+      let salaryAdjustments = user.salaryAdjustments?.get(yearMonth) || null;
+      if (!user.salaryAdjustments?.has(yearMonth)) {
+        const months = Array.from(user.salaryAdjustments.keys() || []).filter(m => m < yearMonth).sort((a, b) => b.localeCompare(a));
+        let prevRemainingViolations = 0;
+        let prevRemainingAdvances = 0;
+        if (months.length > 0) {
+          const prevMonth = months[0];
+          const prevAdj = user.salaryAdjustments.get(prevMonth);
+          prevRemainingViolations = prevAdj.remainingViolations || 0;
+          prevRemainingAdvances = prevAdj.remainingAdvances || 0;
+        }
+        salaryAdjustments = {
+          totalViolations: prevRemainingViolations,
+          deductionViolationsInstallment: 0,
+          totalAdvances: prevRemainingAdvances,
+          deductionAdvancesInstallment: 0,
+          occasionBonus: 0,
+          remainingViolations: prevRemainingViolations,
+          remainingAdvances: prevRemainingAdvances,
+        };
+      } else {
+        salaryAdjustments.remainingViolations = salaryAdjustments.remainingViolations || (salaryAdjustments.totalViolations - salaryAdjustments.deductionViolationsInstallment);
+        salaryAdjustments.remainingAdvances = salaryAdjustments.remainingAdvances || (salaryAdjustments.totalAdvances - salaryAdjustments.deductionAdvancesInstallment);
+      }
       const dailyRate = totalSalaryWithAllowances / 30;
       const hourlyDeductionRate = dailyRate / (shift.baseHours || 9);
-
-      // حساب سعر الساعة الإضافية بناءً على إعدادات الشيفت
       const hourlyOvertimeRate =
         shift.overtimeBasis === 'basicSalary'
           ? (basicSalary / (30 * (shift.baseHours || 9))) * (shift.overtimeMultiplier || 1)
           : (totalSalaryWithAllowances / (30 * (shift.baseHours || 9))) * (shift.overtimeMultiplier || 1);
-
       const fridayHourlyOvertimeRate =
         shift.fridayOvertimeBasis === 'basicSalary'
           ? (basicSalary / (30 * (shift.baseHours || 9))) * (shift.fridayOvertimeMultiplier || 1)
           : (totalSalaryWithAllowances / (30 * (shift.baseHours || 9))) * (shift.fridayOvertimeMultiplier || 1);
-
       let totalOvertimeHours = 0;
       let totalDeductedHours = 0;
       let totalDeductedDays = 0;
@@ -1719,7 +1712,6 @@ exports.getMonthlySalaryReport = async (req, res) => {
       let totalOfficialLeaveDays = 0;
       let totalLeaveAllowance = 0;
       let mealAllowanceDeduction = 0;
-
       for (const date of allDates) {
         let record = attendances.find((a) => a.employeeCode === user.employeeCode && a.date === date);
         if (!record) {
@@ -1739,31 +1731,23 @@ exports.getMonthlySalaryReport = async (req, res) => {
             shiftName: shift.shiftName,
             workDays: shift.workDays,
             leaveBalance: user.annualLeaveBalance || 21,
-            gracePeriod: 0, // إضافة قيمة افتراضية لـ gracePeriod
-            remainingGracePeriod: 0 // إضافة قيمة افتراضية لـ remainingGracePeriod
+            gracePeriod: 0,
+            remainingGracePeriod: 0
           });
           await record.save();
         }
-
-        // حساب خصم بدل الوجبة (50 جنيه لكل يوم غياب أو إجازة سنوية أو إجازة مرضية)
         if (['غائب', 'إجازة سنوية', 'إجازة مرضية'].includes(record.attendanceStatus)) {
           mealAllowanceDeduction += 50;
         }
-
-        // تحديد إذا كان اليوم جمعة
         const isFriday = new Date(date).getDay() === 5;
-        // استخدام سعر الساعة الإضافية المناسب (عادي أو جمعة)
         const overtimeRate = isFriday ? fridayHourlyOvertimeRate : hourlyOvertimeRate;
-        // ضرب الساعات الإضافية بسعر الساعة
         const overtimeAmountForDay = Number(record.overtimeHours || 0) * overtimeRate;
-
         result.push({
           ...record._doc,
           basicSalary,
           totalSalaryWithAllowances,
           overtimeAmountForDay
         });
-
         totalOvertimeHours += Number(record.overtimeHours || 0);
         totalDeductedHours += Number(record.deductedHours || 0);
         totalDeductedDays += Number(record.deductedDays || 0);
@@ -1775,29 +1759,21 @@ exports.getMonthlySalaryReport = async (req, res) => {
         totalOfficialLeaveDays += record.attendanceStatus === 'إجازة رسمية' ? 1 : 0;
         totalLeaveAllowance += record.leaveAllowance === 'نعم' ? dailyRate : 0;
       }
-
-      // التأكد إن خصم بدل الوجبة لا يتجاوز قيمة بدل الوجبة
       mealAllowanceDeduction = Math.min(mealAllowanceDeduction, mealAllowance);
-
       const deductedDaysAmount = totalDeductedDays * dailyRate;
       const deductedHoursAmount = totalDeductedHours * hourlyDeductionRate;
       const violationDeduction = Number(salaryAdjustments.deductionViolationsInstallment || 0);
       const advanceDeduction = Number(salaryAdjustments.deductionAdvancesInstallment || 0);
       const occasionBonus = Number(salaryAdjustments.occasionBonus || 0);
-
-      // حساب إجمالي قيمة الساعات الإضافية بناءً على الأيام العادية والجمعة
       let totalOvertimeAmount = 0;
       for (const date of allDates) {
         const isFriday = new Date(date).getDay() === 5;
         const record = result.find((r) => r.employeeCode === user.employeeCode && r.date === date);
         totalOvertimeAmount += record.overtimeAmountForDay || 0;
       }
-
-      // إجمالي الإضافي يشمل الراتب الإجمالي + بدل الوجبة + قيمة الساعات الإضافية + المنحة + بدل الإجازة
       const totalOvertimeAmountFinal = Number(totalSalaryWithAllowances + mealAllowance + totalOvertimeAmount + occasionBonus + totalLeaveAllowance);
       const totalDeductions = Number(medicalInsurance + socialInsurance + mealAllowanceDeduction + deductedDaysAmount + violationDeduction + advanceDeduction + deductedHoursAmount);
       const finalSalary = Number(totalOvertimeAmountFinal - totalDeductions);
-
       totalsByEmployee[user.employeeCode] = {
         employeeCode: user.employeeCode,
         employeeName: user.name,
@@ -1821,17 +1797,18 @@ exports.getMonthlySalaryReport = async (req, res) => {
         totalDeductedDays,
         totalOvertimeHours,
         specialBonus: occasionBonus,
-        totalViolations: Number(salaryAdjustments.totalViolations || 0),
-        violationDeduction,
-        totalLoans: Number(salaryAdjustments.totalAdvances || 0),
-        loanDeduction: advanceDeduction,
+        totalViolationsFull: Number(salaryAdjustments.totalViolations || 0),
+        totalViolations: Number(salaryAdjustments.totalViolations || 0) - Number(salaryAdjustments.deductionViolationsInstallment || 0),
+        violationDeduction: Number(salaryAdjustments.deductionViolationsInstallment || 0),
+        totalLoansFull: Number(salaryAdjustments.totalAdvances || 0),
+        totalLoans: Number(salaryAdjustments.totalAdvances || 0) - Number(salaryAdjustments.deductionAdvancesInstallment || 0),
+        loanDeduction: Number(salaryAdjustments.deductionAdvancesInstallment || 0),
         totalDeductions,
         totalOvertimeAmount: totalOvertimeAmountFinal,
         finalSalary,
         deductedDaysAmount
       };
     }
-
     return res.status(200).json({
       success: true,
       message: 'تم جلب تقرير الراتب الشهري بنجاح',
@@ -1845,6 +1822,159 @@ exports.getMonthlySalaryReport = async (req, res) => {
       message: 'حدث خطأ أثناء جلب تقرير الراتب الشهري',
       error: error.message,
       stack: error.stack
+    });
+  }
+};
+
+exports.updateSalaryAdjustment = async (req, res) => {
+  try {
+    const { employeeCode, yearMonth } = req.params;
+    const { totalViolations = 0, violationDeduction = 0, totalLoans = 0, loanDeduction = 0, occasionBonus = 0 } = req.body;
+
+    // التحقق من وجود المعلمات المطلوبة
+    if (!employeeCode || !yearMonth) {
+      console.error(`خطأ: كود الموظف أو الشهر مفقود. employeeCode: ${employeeCode}, yearMonth: ${yearMonth}`);
+      return res.status(400).json({
+        success: false,
+        message: 'كود الموظف والشهر مطلوبان',
+        data: null,
+      });
+    }
+
+    const [year, month] = yearMonth.split('-');
+    if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+      console.error(`خطأ: تنسيق الشهر غير صالح. yearMonth: ${yearMonth}`);
+      return res.status(400).json({
+        success: false,
+        message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM',
+        data: null,
+      });
+    }
+
+    // التحقق من وجود الموظف
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      console.error(`خطأ: الموظف غير موجود. employeeCode: ${employeeCode}`);
+      return res.status(404).json({
+        success: false,
+        message: 'الموظف غير موجود',
+        data: null,
+      });
+    }
+
+    // التحقق من صحة القيم
+    if (
+      totalViolations < 0 ||
+      violationDeduction < 0 ||
+      totalLoans < 0 ||
+      loanDeduction < 0 ||
+      occasionBonus < 0
+    ) {
+      console.error(`خطأ: القيم لا يمكن أن تكون سالبة. totalViolations: ${totalViolations}, violationDeduction: ${violationDeduction}, totalLoans: ${totalLoans}, loanDeduction: ${loanDeduction}, occasionBonus: ${occasionBonus}`);
+      return res.status(400).json({
+        success: false,
+        message: 'القيم لا يمكن أن تكون سالبة',
+        data: null,
+      });
+    }
+
+    // حساب الشهر السابق
+    let prevYear = parseInt(year);
+    let prevMonth = parseInt(month) - 1;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+    const previousYearMonth = `${prevYear}-${prevMonth.toString().padStart(2, '0')}`;
+
+    // جلب تعديل الراتب للشهر السابق
+    const previousAdjustment = await SalaryAdjustment.findOne({ employeeCode, month: previousYearMonth });
+
+    // القيم المتبقية من الشهر السابق
+    let prevRemainingViolations = previousAdjustment ? previousAdjustment.remainingViolations || 0 : 0;
+    let prevRemainingAdvances = previousAdjustment ? previousAdjustment.remainingAdvances || 0 : 0;
+
+    // حساب الإجمالي الفعال (المتبقي السابق + القيم الجديدة)
+    const effectiveTotalViolations = prevRemainingViolations + Number(totalViolations);
+    const effectiveTotalAdvances = prevRemainingAdvances + Number(totalLoans);
+
+    // التحقق من أن الخصومات لا تتجاوز الإجمالي
+    if (violationDeduction > effectiveTotalViolations) {
+      console.error(`خطأ: قسط المخالفات أكبر من إجمالي المخالفات. violationDeduction: ${violationDeduction}, effectiveTotalViolations: ${effectiveTotalViolations}`);
+      return res.status(400).json({
+        success: false,
+        message: 'قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات',
+        data: null,
+      });
+    }
+
+    if (loanDeduction > effectiveTotalAdvances) {
+      console.error(`خطأ: قسط السلف أكبر من إجمالي السلف. loanDeduction: ${loanDeduction}, effectiveTotalAdvances: ${effectiveTotalAdvances}`);
+      return res.status(400).json({
+        success: false,
+        message: 'قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف',
+        data: null,
+      });
+    }
+
+    // حساب القيم المتبقية
+    const remainingViolations = effectiveTotalViolations - Number(violationDeduction);
+    const remainingAdvances = effectiveTotalAdvances - Number(loanDeduction);
+
+    // تحديث بيانات تعديلات الراتب في SalaryAdjustment
+    const updatedAdjustment = await SalaryAdjustment.findOneAndUpdate(
+      { employeeCode, month: yearMonth },
+      {
+        employeeCode,
+        month: yearMonth,
+        totalViolations: effectiveTotalViolations,
+        deductionViolationsInstallment: Number(violationDeduction),
+        totalAdvances: effectiveTotalAdvances,
+        deductionAdvancesInstallment: Number(loanDeduction),
+        occasionBonus: Number(occasionBonus),
+        remainingViolations,
+        remainingAdvances,
+      },
+      { upsert: true, new: true }
+    );
+
+    // تحديث بيانات المستخدم في User
+    const salaryAdjustments = user.salaryAdjustments || new Map();
+    salaryAdjustments.set(yearMonth, {
+      totalViolations: effectiveTotalViolations,
+      deductionViolationsInstallment: Number(violationDeduction),
+      totalAdvances: effectiveTotalAdvances,
+      deductionAdvancesInstallment: Number(loanDeduction),
+      occasionBonus: Number(occasionBonus),
+      remainingViolations,
+      remainingAdvances,
+      mealAllowance: user.mealAllowance || 0,
+      mealDeduction: 0,
+    });
+    user.salaryAdjustments = salaryAdjustments;
+    await user.save();
+
+    // إرجاع الاستجابة مع البيانات المحدثة
+    return res.status(200).json({
+      success: true,
+      message: 'تم تحديث تعديلات الراتب بنجاح',
+      data: {
+        totalViolationsFull: effectiveTotalViolations,
+        violationDeduction: Number(violationDeduction),
+        totalLoansFull: effectiveTotalAdvances,
+        loanDeduction: Number(loanDeduction),
+        occasionBonus: Number(occasionBonus),
+        totalViolations: remainingViolations,
+        totalLoans: remainingAdvances,
+      },
+    });
+  } catch (error) {
+    console.error('خطأ في updateSalaryAdjustment:', error.message, error.stack);
+    return res.status(500).json({
+      success: false,
+      message: 'حدث خطأ أثناء تحديث تعديلات الراتب',
+      error: error.message,
+      data: null,
     });
   }
 };
