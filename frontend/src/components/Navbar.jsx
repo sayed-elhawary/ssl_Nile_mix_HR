@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Home, LogOut, Settings, UserPlus, Edit, Upload, DollarSign } from 'lucide-react';
+import { Menu, X, Home, LogOut, Settings, UserPlus, Edit, Upload, DollarSign, AlertCircle } from 'lucide-react';
 
 const CustomCheckIcon = () => (
   <motion.div
@@ -71,8 +71,8 @@ function Navbar({ setIsAuthenticated }) {
   };
 
   const linkVariants = {
-    hover: { scale: 1.05, x: 5, color: '#7C3AED', transition: { duration: 0.3, ease: 'easeOut' } },
-    tap: { scale: 0.95, x: 0, color: '#6B7280', transition: { duration: 0.2 } },
+    hover: { scale: 1.05, x: 5, color: '#E5E7EB', transition: { duration: 0.3, ease: 'easeOut' } },
+    tap: { scale: 0.95, x: 0, color: '#D1D5DB', transition: { duration: 0.2 } },
   };
 
   const buttonVariants = {
@@ -85,9 +85,9 @@ function Navbar({ setIsAuthenticated }) {
     visible: {
       x: 0,
       opacity: 1,
-      transition: { duration: 0.4, ease: 'easeInOut', type: 'spring', stiffness: 200, damping: 20 }
+      transition: { duration: 0.4, ease: 'easeInOut', type: 'spring', stiffness: 200, damping: 20 },
     },
-    exit: { x: '100%', opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }
+    exit: { x: '100%', opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } },
   };
 
   const itemVariants = {
@@ -95,8 +95,8 @@ function Navbar({ setIsAuthenticated }) {
     visible: (i) => ({
       opacity: 1,
       x: 0,
-      transition: { delay: i * 0.1, duration: 0.3, ease: 'easeInOut' }
-    })
+      transition: { delay: i * 0.1, duration: 0.3, ease: 'easeInOut' },
+    }),
   };
 
   const navItems = [
@@ -108,54 +108,15 @@ function Navbar({ setIsAuthenticated }) {
     { path: '/attendance-upload', label: 'رفع الحضور', icon: <Upload className="h-5 w-5" /> },
     { path: '/monthly-salary-report', label: 'تقرير المرتب', icon: <DollarSign className="h-5 w-5" /> },
     { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
+    { path: '/violations', label: 'المخالفات', icon: <AlertCircle className="h-5 w-5" /> },
+    { path: '/create-advance', label: 'إنشاء سلفة', icon: <DollarSign className="h-5 w-5" /> },
   ];
 
   return (
     <div className="font-noto-sans-arabic dir=rtl">
-      <motion.nav
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeInOut' }}
-        className="md:flex bg-gray-100 p-4 sticky top-0 z-50 shadow-lg hidden backdrop-blur-md"
-      >
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-right tracking-wide drop-shadow-lg">
-            HR
-          </h1>
-          <div className="flex items-center space-x-6 space-x-reverse">
-            {navItems.map((item, index) => (
-              <motion.div
-                key={item.path}
-                variants={linkVariants}
-                whileHover="hover"
-                whileTap="tap"
-                className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
-              >
-                <Link
-                  to={item.path}
-                  onClick={() => handleLinkClick(item.path)}
-                  className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300"
-                >
-                  {item.label}
-                </Link>
-              </motion.div>
-            ))}
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              onClick={handleLogout}
-              className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 text-sm font-bold shadow-lg hover:shadow-xl"
-              disabled={showSuccessAnimation || loading}
-            >
-              {loading ? <CustomLoadingSpinner /> : 'تسجيل الخروج'}
-            </motion.button>
-          </div>
-        </div>
-      </motion.nav>
-
+      {/* Hamburger Menu Button for All Screens */}
       <motion.div
-        className="md:hidden fixed top-4 right-4 z-50"
+        className="fixed top-4 right-4 z-50"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
@@ -170,16 +131,31 @@ function Navbar({ setIsAuthenticated }) {
         </motion.button>
       </motion.div>
 
+      {/* Sidebar for All Screens */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
+          <motion.nav
             variants={sidebarVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="md:hidden fixed top-0 right-0 h-full w-64 bg-gray-100 p-4 shadow-lg border-l border-purple-200/50 z-40 overflow-y-auto backdrop-blur-lg"
+            className="fixed top-0 right-0 h-full w-64 bg-gradient-to-b from-gray-600 via-gray-700 to-gray-800 p-4 z-40 flex-col gap-3 shadow-2xl border-l border-gray-300/30 overflow-y-auto"
           >
-            <div className="flex flex-col gap-3 mt-12">
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-b from-gray-600/30 via-gray-700/30 to-gray-800/30"
+              animate={{
+                background: [
+                  'linear-gradient(180deg, rgba(75, 85, 99, 0.3), rgba(55, 65, 81, 0.3), rgba(31, 41, 55, 0.3))',
+                  'linear-gradient(180deg, rgba(75, 85, 99, 0.4), rgba(55, 65, 81, 0.4), rgba(31, 41, 55, 0.4))',
+                  'linear-gradient(180deg, rgba(75, 85, 99, 0.3), rgba(55, 65, 81, 0.3), rgba(31, 41, 55, 0.3))',
+                ],
+              }}
+              transition={{ duration: 10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+            />
+            <div className="relative z-10 flex flex-col gap-3 mt-12">
+              <h1 className="text-2xl font-bold text-white text-right tracking-wide drop-shadow-lg mb-8">
+                HR
+              </h1>
               {navItems.map((item, index) => (
                 <motion.div
                   key={item.path}
@@ -187,12 +163,12 @@ function Navbar({ setIsAuthenticated }) {
                   variants={itemVariants}
                   initial="hidden"
                   animate="visible"
-                  className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
+                  className="px-3 py-2 cursor-pointer rounded-xl hover:bg-white/20 backdrop-blur-sm transition-all duration-300"
                 >
                   <Link
                     to={item.path}
                     onClick={() => handleLinkClick(item.path)}
-                    className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300 flex items-center gap-3"
+                    className="text-white text-sm font-medium hover:text-gray-200 transition-all duration-300 flex items-center gap-3"
                   >
                     {item.icon}
                     {item.label}
@@ -204,26 +180,27 @@ function Navbar({ setIsAuthenticated }) {
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
-                className="px-3 py-2 cursor-pointer rounded-xl hover:bg-purple-100 transition-all duration-300"
+                className="px-3 py-2 cursor-pointer rounded-xl hover:bg-white/20 backdrop-blur-sm transition-all duration-300 mt-4"
                 onClick={handleLogout}
               >
-                <div className="text-gray-900 text-sm font-medium hover:text-purple-600 transition-all duration-300 flex items-center gap-3">
+                <div className="text-white text-sm font-medium hover:text-gray-200 transition-all duration-300 flex items-center gap-3">
                   <LogOut className="h-5 w-5" />
                   تسجيل الخروج
                 </div>
               </motion.div>
             </div>
-          </motion.div>
+          </motion.nav>
         )}
       </AnimatePresence>
 
+      {/* Success Message and Animation */}
       {successMessage && !loading && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="bg-purple-100 border border-purple-400 text-purple-800 p-3 rounded-xl text-sm text-right mt-2 shadow-lg mx-auto max-w-md backdrop-blur-sm"
+          className="bg-gray-100/95 backdrop-blur-sm border border-gray-300/50 text-gray-800 p-3 rounded-xl text-sm text-right mt-2 shadow-lg mx-auto max-w-md"
         >
           {successMessage}
         </motion.div>
@@ -234,9 +211,11 @@ function Navbar({ setIsAuthenticated }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-black/20"
+            className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
           >
-            <CustomCheckIcon />
+            <div className="bg-white/95 backdrop-blur-lg p-8 rounded-full shadow-2xl border border-gray-300/30">
+              <CustomCheckIcon />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -102,12 +102,19 @@ const ReportIcon = () => (
   </div>
 );
 
-// أيقونة جديدة للمخالفات
 const ViolationIcon = () => (
   <div className="h-8 w-8 sm:h-10 sm:w-10 text-red-600">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 9v2m0 4h.01M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
       <path d="M12 17v.01" />
+    </svg>
+  </div>
+);
+
+const AdvanceIcon = () => (
+  <div className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   </div>
 );
@@ -316,6 +323,21 @@ function Dashboard() {
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900">المخالفات</h3>
                 <p className="text-gray-600 text-sm sm:text-base">إدارة وتسجيل المخالفات</p>
+              </div>
+            </Link>
+          </motion.div>
+          <motion.div
+            variants={cardChildVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={() => handleCardClick('/create-advance', 'جارٍ الانتقال إلى إنشاء سلفة')}
+            className="bg-white p-6 sm:p-8 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200/50"
+          >
+            <Link to="/create-advance" className="flex items-center space-x-4 space-x-reverse">
+              <AdvanceIcon />
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">إنشاء سلفة</h3>
+                <p className="text-gray-600 text-sm sm:text-base">تسجيل سلفة جديدة لموظف</p>
               </div>
             </Link>
           </motion.div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { format } from 'date-fns';
-import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm';
-import { saveAs } from 'https://cdn.jsdelivr.net/npm/file-saver@2.0.5/+esm';
-import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType } from 'https://cdn.jsdelivr.net/npm/docx@7.8.2/+esm';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType } from 'docx';
+
 import { Pencil, Download } from 'lucide-react';
 
 const CustomCheckIcon = () => (

@@ -5,46 +5,18 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
+// مكونات مخصصة للتحميل والنجاح
 const CustomCheckIcon = () => (
-  <motion.div
-    className="relative h-16 w-16"
-    initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
-  >
-    <motion.svg
-      className="h-full w-full text-purple-600"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={3}
-      initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.8, ease: 'easeInOut' } }}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </motion.svg>
-    <motion.div
-      className="absolute inset-0 rounded-full bg-purple-100 opacity-40"
-      initial={{ scale: 0 }}
-      animate={{ scale: 1.8, opacity: 0, transition: { duration: 1.2, ease: 'easeOut' } }}
-    />
-  </motion.div>
+  <svg className="w-16 h-16 text-purple-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+  </svg>
 );
 
 const CustomLoadingSpinner = () => (
-  <motion.div
-    className="flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeIn' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeOut' } }}
-  >
-    <motion.div
-      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-    />
-    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
-  </motion.div>
+  <svg className="w-16 h-16 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path>
+  </svg>
 );
 
 function MonthlySalaryReport() {
@@ -52,8 +24,7 @@ function MonthlySalaryReport() {
   const [shifts, setShifts] = useState([]);
   const [selectedShift, setSelectedShift] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
-  const [startDate, setStartDate] = useState('2025-05-01');
-  const [endDate, setEndDate] = useState('2025-05-31');
+  const [yearMonth, setYearMonth] = useState('2025-05');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -73,11 +44,15 @@ function MonthlySalaryReport() {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      if (!response.ok) throw new Error('فشل في جلب الشيفتات');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'فشل في جلب الشيفتات');
+      }
       const shiftsData = await response.json();
       setShifts(shiftsData);
     } catch (err) {
-      setError('حدث خطأ أثناء جلب الشيفتات');
+      setError(`حدث خطأ أثناء جلب الشيفتات: ${err.message}`);
+      console.error('Error fetching shifts:', err);
     } finally {
       setLoading(false);
     }
@@ -88,13 +63,40 @@ function MonthlySalaryReport() {
     setError('');
     setSuccessMessage('');
     try {
-      let url = `${process.env.REACT_APP_API_URL}/api/attendance/monthly-salary-report?yearMonth=${startDate.slice(0, 7)}`;
+      // التحقق من صيغة yearMonth
+      const [year, month] = yearMonth.split('-');
+      if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        throw new Error('تنسيق الشهر غير صالح، استخدم YYYY-MM');
+      }
+
+      // التحقق من وجود التوكن
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('التوكن غير موجود، يرجى تسجيل الدخول مرة أخرى');
+      }
+
+      let url = `${process.env.REACT_APP_API_URL}/api/user/monthly-salary-report?yearMonth=${yearMonth}`;
       if (employeeCode) url += `&employeeCode=${employeeCode}`;
       if (selectedShift) url += `&shiftId=${selectedShift}`;
+      
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error('فشل في جلب التقرير');
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('التوكن غير صالح أو منتهي الصلاحية، يرجى تسجيل الدخول مرة أخرى');
+        }
+        if (response.status === 400) {
+          throw new Error(errorData.message || 'بيانات الإدخال غير صالحة');
+        }
+        if (response.status === 404) {
+          throw new Error(errorData.message || 'لا يوجد بيانات للتقرير');
+        }
+        throw new Error(errorData.message || 'فشل في جلب التقرير');
+      }
+
       const reports = await response.json();
       const processedData = (reports.totals || []).map(row => ({
         ...row,
@@ -106,15 +108,17 @@ function MonthlySalaryReport() {
         loanDeduction: Number(row.loanDeduction || 0),
         totalViolations: Number(row.totalViolations || 0),
         totalLoans: Number(row.totalLoans || 0),
-        totalViolationsFull: Number(row.totalViolationsFull || 0), // القيمة الكلية
-        totalLoansFull: Number(row.totalLoansFull || 0), // القيمة الكلية
+        totalViolationsFull: Number(row.totalViolationsFull || 0),
+        totalLoansFull: Number(row.totalLoansFull || 0),
+        occasionBonus: Number(row.occasionBonus || 0),
       }));
       setData(processedData);
       setShowSuccessAnimation(true);
       setSuccessMessage('تم جلب التقرير بنجاح');
       setTimeout(() => setShowSuccessAnimation(false), 2000);
     } catch (err) {
-      setError('حدث خطأ أثناء جلب التقرير');
+      setError(`حدث خطأ أثناء جلب التقرير: ${err.message}`);
+      console.error('Error fetching report:', err);
     } finally {
       setLoading(false);
     }
@@ -131,10 +135,11 @@ function MonthlySalaryReport() {
   const openEditModal = (user) => {
     setEditUser(user);
     setEditValues({
-      totalViolations: user.totalViolationsFull || user.totalViolations || 0, // استخدام القيمة الكلية
+      totalViolations: user.totalViolationsFull || user.totalViolations || 0,
       violationDeduction: user.violationDeduction || 0,
-      totalLoans: user.totalLoansFull || user.totalLoans || 0, // استخدام القيمة الكلية
+      totalLoans: user.totalLoansFull || user.totalLoans || 0,
       loanDeduction: user.loanDeduction || 0,
+      occasionBonus: user.occasionBonus || 0,
     });
     setEditModalOpen(true);
   };
@@ -145,101 +150,92 @@ function MonthlySalaryReport() {
     setEditValues(prev => ({ ...prev, [name]: Number(value) }));
   };
 
-
-const saveEdit = async () => {
-  if (!window.confirm('هل أنت متأكد من حفظ التغييرات؟')) return;
-  setLoading(true);
-  let responseData = null;
-  try {
-    if (!editUser || !editUser.employeeCode) {
-      throw new Error('كود الموظف غير موجود');
-    }
-    if (
-      editValues.totalViolations === undefined ||
-      editValues.violationDeduction === undefined ||
-      editValues.totalLoans === undefined ||
-      editValues.loanDeduction === undefined
-    ) {
-      throw new Error('يرجى ملء جميع الحقول بقيم صالحة');
-    }
-    if (editValues.violationDeduction > editValues.totalViolations) {
-      throw new Error('قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات');
-    }
-    if (editValues.loanDeduction > editValues.totalLoans) {
-      throw new Error('قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف');
-    }
-    const response = await fetch(
-      `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${startDate.slice(0, 7)}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          totalViolations: Number(editValues.totalViolations),
-          deductionViolationsInstallment: Number(editValues.violationDeduction),
-          totalAdvances: Number(editValues.totalLoans),
-          deductionAdvancesInstallment: Number(editValues.loanDeduction),
-          occasionBonus: Number(editValues.occasionBonus) || 0,
-        }),
+  const saveEdit = async () => {
+    if (!window.confirm('هل أنت متأكد من حفظ التغييرات؟')) return;
+    setLoading(true);
+    try {
+      if (!editUser || !editUser.employeeCode) {
+        throw new Error('كود الموظف غير موجود');
       }
-    );
-    responseData = await response.json();
-    console.log('استجابة الـ API:', JSON.stringify(responseData, null, 2), 'رمز الحالة:', response.status);
-
-    if (!response.ok) {
-      throw new Error(`فشل طلب الـ API: رمز الحالة ${response.status}, الرسالة: ${responseData.message || 'غير معروف'}`);
-    }
-    if (!responseData.success) {
-      throw new Error(responseData.message || 'فشل في التعديل: الاستجابة غير ناجحة');
-    }
-    if (!responseData.data) {
-      throw new Error(responseData.message || 'البيانات المرتجعة من الـ API غير موجودة');
-    }
-
-    setData(prevData =>
-      prevData.map(row =>
-        row.employeeCode === editUser.employeeCode
-          ? {
-              ...row,
-              totalViolationsFull: Number(responseData.data.totalViolationsFull || 0),
-              totalViolations: Number(responseData.data.totalViolations || 0),
-              violationDeduction: Number(responseData.data.violationDeduction || 0),
-              totalLoansFull: Number(responseData.data.totalLoansFull || 0),
-              totalLoans: Number(responseData.data.totalLoans || 0),
-              loanDeduction: Number(responseData.data.loanDeduction || 0),
-              occasionBonus: Number(responseData.data.occasionBonus || 0),
-              totalDeductions:
-                Number(row.totalDeductions) -
-                Number(row.violationDeduction) -
-                Number(row.loanDeduction) +
-                Number(responseData.data.violationDeduction || 0) +
-                Number(responseData.data.loanDeduction || 0),
-              finalSalary:
-                Number(row.totalOvertimeAmount) -
-                (Number(row.totalDeductions) -
+      if (
+        editValues.totalViolations === undefined ||
+        editValues.violationDeduction === undefined ||
+        editValues.totalLoans === undefined ||
+        editValues.loanDeduction === undefined ||
+        editValues.occasionBonus === undefined
+      ) {
+        throw new Error('يرجى ملء جميع الحقول بقيم صالحة');
+      }
+      if (editValues.violationDeduction > editValues.totalViolations) {
+        throw new Error('قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات');
+      }
+      if (editValues.loanDeduction > editValues.totalLoans) {
+        throw new Error('قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف');
+      }
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/user/update-salary-adjustment/${editUser.employeeCode}/${yearMonth}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            totalViolations: Number(editValues.totalViolations),
+            deductionViolationsInstallment: Number(editValues.violationDeduction),
+            totalAdvances: Number(editValues.totalLoans),
+            deductionAdvancesInstallment: Number(editValues.loanDeduction),
+            occasionBonus: Number(editValues.occasionBonus),
+          }),
+        }
+      );
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.message || 'فشل في التعديل');
+      }
+      setData(prevData =>
+        prevData.map(row =>
+          row.employeeCode === editUser.employeeCode
+            ? {
+                ...row,
+                totalViolationsFull: Number(responseData.data.totalViolationsFull || 0),
+                totalViolations: Number(responseData.data.totalViolations || 0),
+                violationDeduction: Number(responseData.data.violationDeduction || 0),
+                totalLoansFull: Number(responseData.data.totalLoansFull || 0),
+                totalLoans: Number(responseData.data.totalLoans || 0),
+                loanDeduction: Number(responseData.data.loanDeduction || 0),
+                occasionBonus: Number(responseData.data.occasionBonus || 0),
+                totalDeductions:
+                  Number(row.totalDeductions) -
                   Number(row.violationDeduction) -
                   Number(row.loanDeduction) +
                   Number(responseData.data.violationDeduction || 0) +
-                  Number(responseData.data.loanDeduction || 0)),
-            }
-          : row
-      )
-    );
-    setShowSuccessAnimation(true);
-    setSuccessMessage('تم التعديل بنجاح');
-    setTimeout(() => {
-      setShowSuccessAnimation(false);
-      setEditModalOpen(false);
-    }, 2000);
-  } catch (err) {
-    setError(`حدث خطأ أثناء التعديل: ${err.message}`);
-    console.error('خطأ في saveEdit:', err, 'استجابة الـ API:', responseData ? JSON.stringify(responseData, null, 2) : 'لم يتم استلام استجابة');
-  } finally {
-    setLoading(false);
-  }
-};
+                  Number(responseData.data.loanDeduction || 0),
+                finalSalary:
+                  Number(row.totalOvertimeAmount) -
+                  (Number(row.totalDeductions) -
+                    Number(row.violationDeduction) -
+                    Number(row.loanDeduction) +
+                    Number(responseData.data.violationDeduction || 0) +
+                    Number(responseData.data.loanDeduction || 0)),
+              }
+            : row
+        )
+      );
+      setShowSuccessAnimation(true);
+      setSuccessMessage('تم التعديل بنجاح');
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+        setEditModalOpen(false);
+      }, 2000);
+    } catch (err) {
+      setError(`حدث خطأ أثناء التعديل: ${err.message}`);
+      console.error('Error saving edit:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const calculateTotals = () => {
     return data.reduce((acc, row) => {
       return {
@@ -248,7 +244,7 @@ const saveEdit = async () => {
         medicalInsurance: acc.medicalInsurance + Number(row.medicalInsurance || 0),
         socialInsurance: acc.socialInsurance + Number(row.socialInsurance || 0),
         mealAllowance: acc.mealAllowance + Number(row.mealAllowance || 0),
-        mealAllowanceDeduction: acc.mealAllowanceDeduction + Number(row.mealAllowanceDeduction || 0),
+        mealDeduction: acc.mealDeduction + Number(row.mealDeduction || 0),
         remainingMealAllowance: acc.remainingMealAllowance + Number(row.remainingMealAllowance || 0),
         totalAttendanceDays: acc.totalAttendanceDays + Number(row.totalAttendanceDays || 0),
         totalWeeklyOffDays: acc.totalWeeklyOffDays + Number(row.totalWeeklyOffDays || 0),
@@ -261,7 +257,7 @@ const saveEdit = async () => {
         totalOfficialLeaveDays: acc.totalOfficialLeaveDays + Number(row.totalOfficialLeaveDays || 0),
         totalDeductedDays: acc.totalDeductedDays + Number(row.totalDeductedDays || 0),
         totalOvertimeHours: acc.totalOvertimeHours + Number(row.totalOvertimeHours || 0),
-        specialBonus: acc.specialBonus + Number(row.specialBonus || 0),
+        occasionBonus: acc.occasionBonus + Number(row.occasionBonus || 0),
         totalViolations: acc.totalViolations + Number(row.totalViolations || 0),
         violationDeduction: acc.violationDeduction + Number(row.violationDeduction || 0),
         totalLoans: acc.totalLoans + Number(row.totalLoans || 0),
@@ -272,6 +268,7 @@ const saveEdit = async () => {
         deductedDaysAmount: acc.deductedDaysAmount + Number(row.deductedDaysAmount || 0),
         employeeCode: '',
         employeeName: '',
+        shiftName: '',
       };
     }, {
       basicSalary: 0,
@@ -279,7 +276,7 @@ const saveEdit = async () => {
       medicalInsurance: 0,
       socialInsurance: 0,
       mealAllowance: 0,
-      mealAllowanceDeduction: 0,
+      mealDeduction: 0,
       remainingMealAllowance: 0,
       totalAttendanceDays: 0,
       totalWeeklyOffDays: 0,
@@ -292,7 +289,7 @@ const saveEdit = async () => {
       totalOfficialLeaveDays: 0,
       totalDeductedDays: 0,
       totalOvertimeHours: 0,
-      specialBonus: 0,
+      occasionBonus: 0,
       totalViolations: 0,
       violationDeduction: 0,
       totalLoans: 0,
@@ -303,6 +300,7 @@ const saveEdit = async () => {
       deductedDaysAmount: 0,
       employeeCode: '',
       employeeName: '',
+      shiftName: '',
     });
   };
 
@@ -317,66 +315,66 @@ const saveEdit = async () => {
       const reversedData = [...data].reverse();
       const excelData = [
         ...reversedData.map(row => ({
-          'الصافي': formatNumber(row.finalSalary),
-          'إجمالي الإضافي': formatNumber(row.totalOvertimeAmount),
-          'إجمالي قيمة الخصومات': formatNumber(row.totalDeductions),
-          'خصم قسط السلف': formatNumber(row.loanDeduction),
-          'إجمالي السلف': formatNumber(row.totalLoans),
-          'خصم قسط المخالفات': formatNumber(row.violationDeduction),
-          'إجمالي المخالفات': formatNumber(row.totalViolations),
-          'منحة مناسبة': formatNumber(row.specialBonus),
-          'إجمالي الساعات الإضافية': formatNumber(row.totalOvertimeHours),
-          'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
-          'إجمالي الإجازات الرسمية': formatNumber(row.totalOfficialLeaveDays),
-          'رصيد الإجازة السنوية': formatNumber(row.annualLeaveBalance),
-          'إجمالي خصم الإجازة المرضية': formatNumber(row.totalSickLeaveDeduction),
-          'إجمالي الإجازات السنوية': formatNumber(row.totalAnnualLeaveDays),
-          'إجمالي الساعات المخصومة': formatNumber(row.totalDeductedHours),
-          'إجمالي الغياب': formatNumber(row.totalAbsentDays),
-          'إجمالي بدل الإجازة': formatNumber(row.totalLeaveAllowance),
-          'إجمالي الإجازات الأسبوعية': formatNumber(row.totalWeeklyOffDays),
-          'إجمالي أيام الحضور': formatNumber(row.totalAttendanceDays),
-          'نوع الشيفت': row.shiftName,
-          'بدل الوجبة المتبقي': formatNumber(row.remainingMealAllowance),
-          'خصومات بدل الوجبة': formatNumber(row.mealAllowanceDeduction),
-          'بدل الوجبة': formatNumber(row.mealAllowance),
-          'التأمين الاجتماعي': formatNumber(row.socialInsurance),
-          'التأمين الطبي': formatNumber(row.medicalInsurance),
-          'الراتب الإجمالي بالبدلات': formatNumber(row.totalSalaryWithAllowances),
-          'الراتب الأساسي': formatNumber(row.basicSalary),
-          'اسم الموظف': row.employeeName,
           'كود الموظف': row.employeeCode,
+          'اسم الموظف': row.employeeName,
+          'الراتب الأساسي': formatNumber(row.basicSalary),
+          'الراتب الإجمالي بالبدلات': formatNumber(row.totalSalaryWithAllowances),
+          'التأمين الطبي': formatNumber(row.medicalInsurance),
+          'التأمين الاجتماعي': formatNumber(row.socialInsurance),
+          'بدل الوجبة': formatNumber(row.mealAllowance),
+          'خصومات بدل الوجبة': formatNumber(row.mealDeduction),
+          'بدل الوجبة المتبقي': formatNumber(row.remainingMealAllowance),
+          'نوع الشيفت': row.shiftName,
+          'إجمالي أيام الحضور': formatNumber(row.totalAttendanceDays),
+          'إجمالي الإجازات الأسبوعية': formatNumber(row.totalWeeklyOffDays),
+          'إجمالي بدل الإجازة': formatNumber(row.totalLeaveAllowance),
+          'إجمالي الغياب': formatNumber(row.totalAbsentDays),
+          'إجمالي الساعات المخصومة': formatNumber(row.totalDeductedHours),
+          'إجمالي الإجازات السنوية': formatNumber(row.totalAnnualLeaveDays),
+          'إجمالي خصم الإجازة المرضية': formatNumber(row.totalSickLeaveDeduction),
+          'رصيد الإجازة السنوية': formatNumber(row.annualLeaveBalance),
+          'إجمالي الإجازات الرسمية': formatNumber(row.totalOfficialLeaveDays),
+          'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
+          'إجمالي الساعات الإضافية': formatNumber(row.totalOvertimeHours),
+          'منحة مناسبة': formatNumber(row.occasionBonus),
+          'إجمالي المخالفات': formatNumber(row.totalViolations),
+          'خصم قسط المخالفات': formatNumber(row.violationDeduction),
+          'إجمالي السلف': formatNumber(row.totalLoans),
+          'خصم قسط السلف': formatNumber(row.loanDeduction),
+          'إجمالي قيمة الخصومات': formatNumber(row.totalDeductions),
+          'إجمالي الإضافي': formatNumber(row.totalOvertimeAmount),
+          'الصافي': formatNumber(row.finalSalary),
         })),
         {
-          'الصافي': formatNumber(totals.finalSalary),
-          'إجمالي الإضافي': formatNumber(totals.totalOvertimeAmount),
-          'إجمالي قيمة الخصومات': formatNumber(totals.totalDeductions),
-          'خصم قسط السلف': formatNumber(totals.loanDeduction),
-          'إجمالي السلف': formatNumber(totals.totalLoans),
-          'خصم قسط المخالفات': formatNumber(totals.violationDeduction),
-          'إجمالي المخالفات': formatNumber(totals.totalViolations),
-          'منحة مناسبة': formatNumber(totals.specialBonus),
-          'إجمالي الساعات الإضافية': formatNumber(totals.totalOvertimeHours),
-          'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
-          'إجمالي الإجازات الرسمية': formatNumber(totals.totalOfficialLeaveDays),
-          'رصيد الإجازة السنوية': formatNumber(totals.annualLeaveBalance),
-          'إجمالي خصم الإجازة المرضية': formatNumber(totals.totalSickLeaveDeduction),
-          'إجمالي الإجازات السنوية': formatNumber(totals.totalAnnualLeaveDays),
-          'إجمالي الساعات المخصومة': formatNumber(totals.totalDeductedHours),
-          'إجمالي الغياب': formatNumber(totals.totalAbsentDays),
-          'إجمالي بدل الإجازة': formatNumber(totals.totalLeaveAllowance),
-          'إجمالي الإجازات الأسبوعية': formatNumber(totals.totalWeeklyOffDays),
-          'إجمالي أيام الحضور': formatNumber(totals.totalAttendanceDays),
-          'نوع الشيفت': '',
-          'بدل الوجبة المتبقي': formatNumber(totals.remainingMealAllowance),
-          'خصومات بدل الوجبة': formatNumber(totals.mealAllowanceDeduction),
-          'بدل الوجبة': formatNumber(totals.mealAllowance),
-          'التأمين الاجتماعي': formatNumber(totals.socialInsurance),
-          'التأمين الطبي': formatNumber(totals.medicalInsurance),
-          'الراتب الإجمالي بالبدلات': formatNumber(totals.totalSalaryWithAllowances),
-          'الراتب الأساسي': formatNumber(totals.basicSalary),
-          'اسم الموظف': '',
           'كود الموظف': 'إجمالي',
+          'اسم الموظف': '',
+          'الراتب الأساسي': formatNumber(totals.basicSalary),
+          'الراتب الإجمالي بالبدلات': formatNumber(totals.totalSalaryWithAllowances),
+          'التأمين الطبي': formatNumber(totals.medicalInsurance),
+          'التأمين الاجتماعي': formatNumber(totals.socialInsurance),
+          'بدل الوجبة': formatNumber(totals.mealAllowance),
+          'خصومات بدل الوجبة': formatNumber(totals.mealDeduction),
+          'بدل الوجبة المتبقي': formatNumber(totals.remainingMealAllowance),
+          'نوع الشيفت': '',
+          'إجمالي أيام الحضور': formatNumber(totals.totalAttendanceDays),
+          'إجمالي الإجازات الأسبوعية': formatNumber(totals.totalWeeklyOffDays),
+          'إجمالي بدل الإجازة': formatNumber(totals.totalLeaveAllowance),
+          'إجمالي الغياب': formatNumber(totals.totalAbsentDays),
+          'إجمالي الساعات المخصومة': formatNumber(totals.totalDeductedHours),
+          'إجمالي الإجازات السنوية': formatNumber(totals.totalAnnualLeaveDays),
+          'إجمالي خصم الإجازة المرضية': formatNumber(totals.totalSickLeaveDeduction),
+          'رصيد الإجازة السنوية': formatNumber(totals.annualLeaveBalance),
+          'إجمالي الإجازات الرسمية': formatNumber(totals.totalOfficialLeaveDays),
+          'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
+          'إجمالي الساعات الإضافية': formatNumber(totals.totalOvertimeHours),
+          'منحة مناسبة': formatNumber(totals.occasionBonus),
+          'إجمالي المخالفات': formatNumber(totals.totalViolations),
+          'خصم قسط المخالفات': formatNumber(totals.violationDeduction),
+          'إجمالي السلف': formatNumber(totals.totalLoans),
+          'خصم قسط السلف': formatNumber(totals.loanDeduction),
+          'إجمالي قيمة الخصومات': formatNumber(totals.totalDeductions),
+          'إجمالي الإضافي': formatNumber(totals.totalOvertimeAmount),
+          'الصافي': formatNumber(totals.finalSalary),
         },
       ];
       const ws = XLSX.utils.json_to_sheet(excelData);
@@ -385,6 +383,7 @@ const saveEdit = async () => {
       XLSX.writeFile(wb, 'monthly_salary_report.xlsx');
     } catch (err) {
       setError(`حدث خطأ أثناء تصدير Excel: ${err.message}`);
+      console.error('Error exporting to Excel:', err);
     } finally {
       setLoading(false);
     }
@@ -413,7 +412,7 @@ const saveEdit = async () => {
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.medicalInsurance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.socialInsurance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowance)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealAllowanceDeduction)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.mealDeduction)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.remainingMealAllowance)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800"></td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalAttendanceDays)}</td>
@@ -427,7 +426,7 @@ const saveEdit = async () => {
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOfficialLeaveDays)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalDeductedDays)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalOvertimeHours)}</td>
-        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.specialBonus)}</td>
+        <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.occasionBonus)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalViolations)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.violationDeduction)}</td>
         <td class="py-4 px-6 text-right text-sm text-gray-800">${formatNumber(totals.totalLoans)}</td>
@@ -457,6 +456,7 @@ const saveEdit = async () => {
       document.body.removeChild(tempContainer);
     } catch (err) {
       setError(`حدث خطأ أثناء تصدير PDF: ${err.message}`);
+      console.error('Error exporting to PDF:', err);
     } finally {
       setLoading(false);
     }
@@ -510,6 +510,24 @@ const saveEdit = async () => {
             placeholder="كود الموظف"
             className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
           />
+          <input
+            type="month"
+            value={yearMonth}
+            onChange={(e) => setYearMonth(e.target.value)}
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+          />
+          <select
+            value={selectedShift}
+            onChange={(e) => setSelectedShift(e.target.value)}
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+          >
+            <option value="">كل الشيفتات</option>
+            {shifts.map(shift => (
+              <option key={shift._id} value={shift._id}>
+                {shift.shiftName} ({shift.shiftType})
+              </option>
+            ))}
+          </select>
           <motion.button
             variants={buttonVariants}
             whileHover="hover"
@@ -546,34 +564,6 @@ const saveEdit = async () => {
           >
             <Download className="h-4 w-4 ml-2" /> تصدير إلى PDF
           </motion.button>
-        </div>
-        <div className="mb-6 flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 md:space-x-reverse">
-          <label className="text-gray-600 text-sm font-medium">من:</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
-          />
-          <label className="text-gray-600 text-sm font-medium">إلى:</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
-          />
-          <select
-            value={selectedShift}
-            onChange={(e) => setSelectedShift(e.target.value)}
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
-          >
-            <option value="">كل الشيفتات</option>
-            {shifts.map(shift => (
-              <option key={shift._id} value={shift._id}>
-                {shift.shiftName} ({shift.shiftType})
-              </option>
-            ))}
-          </select>
         </div>
         {loading && (
           <div className="flex justify-center mb-6">
@@ -626,7 +616,7 @@ const saveEdit = async () => {
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.medicalInsurance)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.socialInsurance)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealAllowanceDeduction)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealDeduction)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.remainingMealAllowance)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{row.shiftName}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAttendanceDays)}</td>
@@ -640,7 +630,7 @@ const saveEdit = async () => {
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOfficialLeaveDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedDays)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeHours)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.specialBonus)}</td>
+                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.occasionBonus)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalViolations)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.violationDeduction)}</td>
                   <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalLoans)}</td>
@@ -668,7 +658,7 @@ const saveEdit = async () => {
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.medicalInsurance)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.socialInsurance)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowanceDeduction)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealDeduction)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.remainingMealAllowance)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAttendanceDays)}</td>
@@ -682,7 +672,7 @@ const saveEdit = async () => {
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOfficialLeaveDays)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedDays)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.specialBonus)}</td>
+                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.occasionBonus)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalViolations)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.violationDeduction)}</td>
                 <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalLoans)}</td>
@@ -704,8 +694,8 @@ const saveEdit = async () => {
               exit="exit"
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
             >
-              <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-                <h3 className="text-xl font-bold text-purple-600 mb-4 text-right">تعديل بيانات الموظف</h3>
+              <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
+                <h3 className="text-xl font-bold text-purple-600 mb-6 text-right">تعديل بيانات الراتب</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">إجمالي المخالفات</label>
@@ -714,7 +704,8 @@ const saveEdit = async () => {
                       name="totalViolations"
                       value={editValues.totalViolations || ''}
                       onChange={handleEditChange}
-                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      min="0"
                     />
                   </div>
                   <div>
@@ -724,7 +715,8 @@ const saveEdit = async () => {
                       name="violationDeduction"
                       value={editValues.violationDeduction || ''}
                       onChange={handleEditChange}
-                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      min="0"
                     />
                   </div>
                   <div>
@@ -734,7 +726,8 @@ const saveEdit = async () => {
                       name="totalLoans"
                       value={editValues.totalLoans || ''}
                       onChange={handleEditChange}
-                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      min="0"
                     />
                   </div>
                   <div>
@@ -744,11 +737,23 @@ const saveEdit = async () => {
                       name="loanDeduction"
                       value={editValues.loanDeduction || ''}
                       onChange={handleEditChange}
-                      className="mt-1 block w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">منحة مناسبة</label>
+                    <input
+                      type="number"
+                      name="occasionBonus"
+                      value={editValues.occasionBonus || ''}
+                      onChange={handleEditChange}
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      min="0"
                     />
                   </div>
                 </div>
-                <div className="mt-6 flex justify-between">
+                <div className="mt-6 flex justify-end space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
@@ -763,7 +768,7 @@ const saveEdit = async () => {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={() => setEditModalOpen(false)}
-                    className="bg-gray-300 text-gray-800 p-3 rounded-2xl hover:bg-gray-400 transition duration-300 text-sm font-medium shadow-md"
+                    className="bg-gray-600 text-white p-3 rounded-2xl hover:bg-gray-700 transition duration-300 text-sm font-medium shadow-md"
                   >
                     إلغاء
                   </motion.button>

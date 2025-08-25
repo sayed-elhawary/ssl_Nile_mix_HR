@@ -1,5 +1,4 @@
-// backend/models/User.js
-const mongoose = require('mongoose'); // Add this line to import mongoose
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   employeeCode: { type: String, required: true, unique: true },
@@ -8,7 +7,7 @@ const userSchema = new mongoose.Schema({
   medicalInsurance: { type: Number, default: 0 },
   socialInsurance: { type: Number, default: 0 },
   name: { type: String, required: true },
-  mealAllowance: { type: Number, default: 1500 }, // Default meal allowance
+  mealAllowance: { type: Number, default: 1500 },
   shiftType: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift', required: true },
   workDays: { type: Number, required: true },
   totalSalaryWithAllowances: { type: Number, required: true },
@@ -31,13 +30,25 @@ const userSchema = new mongoose.Schema({
       totalAdvances: { type: Number, default: 0 },
       deductionAdvancesInstallment: { type: Number, default: 0 },
       occasionBonus: { type: Number, default: 0 },
-      mealAllowance: { type: Number, default: 0 }, // Monthly meal allowance
-      mealDeduction: { type: Number, default: 0 }, // Monthly meal deduction
+      mealAllowance: { type: Number, default: 0 },
+      mealDeduction: { type: Number, default: 0 },
       remainingViolations: { type: Number, default: 0 },
-      remainingAdvances: { type: Number, default: 0 }
+      remainingAdvances: { type: Number, default: 0 },
     },
-    default: {}
+    default: {},
+  },
+  role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
+}, { timestamps: true, autoIndex: false });
+
+// تحسين استجابات JSON
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    delete ret._id;
+    delete ret.__v;
+    delete ret.password; // إزالة كلمة المرور من الاستجابات
+    return ret;
   }
-}, { timestamps: true });
+});
 
 module.exports = mongoose.model('User', userSchema);

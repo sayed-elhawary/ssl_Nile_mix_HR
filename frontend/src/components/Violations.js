@@ -7,8 +7,8 @@ const CustomCheckIcon = () => (
   <motion.div
     className="relative h-16 w-16"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.7, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.9, ease: [0.68, -0.55, 0.265, 1.55], type: 'spring', stiffness: 90, damping: 25 } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.5, ease: 'easeInOut' } }}
   >
     <motion.svg
       className="h-full w-full text-purple-600"
@@ -17,7 +17,7 @@ const CustomCheckIcon = () => (
       stroke="currentColor"
       strokeWidth={3}
       initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.9, ease: [0.6, -0.05, 0.01, 0.99] } }}
+      animate={{ pathLength: 1, rotate: 0, transition: { duration: 1.2, ease: [0.68, -0.55, 0.265, 1.55] } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
@@ -29,8 +29,8 @@ const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
     initial={{ opacity: 0 }}
-    animate={{ opacity: 1, transition: { duration: 0.4, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    animate={{ opacity: 1, transition: { duration: 0.6, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, transition: { duration: 0.6, ease: 'easeInOut' } }}
   >
     <motion.div
       className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
@@ -69,6 +69,9 @@ function Violations() {
   });
   const [editId, setEditId] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [imageError, setImageError] = useState(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     fetchViolations();
@@ -83,8 +86,9 @@ function Violations() {
         setLoading(false);
         return;
       }
-      const response = await axios.get('http://nilemix.mywire.org:5000/api/violations', {
-        headers: { Authorization: `Bearer ${token}` }
+      console.log('جلب المخالفات من:', `${process.env.REACT_APP_API_URL}/api/violations`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/violations`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.success) {
         setViolations(response.data.data || []);
@@ -96,7 +100,7 @@ function Violations() {
       console.error('خطأ في جلب المخالفات:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
       });
       setErrorMessage(error.response?.data?.message || 'حدث خطأ في جلب البيانات');
     }
@@ -118,8 +122,8 @@ function Violations() {
         return;
       }
       console.log('جلب بيانات الموظف للكود:', employeeCode);
-      const response = await axios.get(`http://nilemix.mywire.org:5000/api/violations/employee/${employeeCode}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/violations/employee/${employeeCode}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.success) {
         const { name, department } = response.data.data;
@@ -133,7 +137,7 @@ function Violations() {
       console.error('خطأ في جلب بيانات الموظف:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
       });
       setErrorMessage(error.response?.data?.message || 'حدث خطأ في جلب بيانات الموظف');
     }
@@ -157,22 +161,19 @@ function Violations() {
     e.preventDefault();
     setLoading(true);
     setErrorMessage('');
-
     const requiredFields = ['employeeCode', 'employeeName', 'violationPrice', 'date', 'vehicleCode', 'station'];
-    const missingFields = requiredFields.filter(field => !formData[field]);
+    const missingFields = requiredFields.filter((field) => !formData[field]);
     if (missingFields.length > 0) {
       setErrorMessage(`يرجى ملء الحقول التالية: ${missingFields.join(', ')}`);
       setLoading(false);
       return;
     }
-
     const data = new FormData();
-    Object.keys(formData).forEach(key => {
+    Object.keys(formData).forEach((key) => {
       if (formData[key] !== null) {
         data.append(key, formData[key]);
       }
     });
-
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -182,13 +183,13 @@ function Violations() {
       }
       console.log('إرسال بيانات المخالفة:', Object.fromEntries(data));
       if (editId) {
-        await axios.put(`http://nilemix.mywire.org:5000/api/violations/${editId}`, data, {
-          headers: { Authorization: `Bearer ${token}` }
+        await axios.put(`${process.env.REACT_APP_API_URL}/api/violations/${editId}`, data, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         setSuccessMessage('تم تعديل المخالفة بنجاح');
       } else {
-        await axios.post('http://nilemix.mywire.org:5000/api/violations', data, {
-          headers: { Authorization: `Bearer ${token}` }
+        await axios.post(`${process.env.REACT_APP_API_URL}/api/violations`, data, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         setSuccessMessage('تم إضافة المخالفة بنجاح');
       }
@@ -198,12 +199,12 @@ function Violations() {
         setLoading(false);
         fetchViolations();
         resetForm();
-      }, 1200);
+      }, 1500);
     } catch (error) {
       console.error('خطأ في حفظ المخالفة:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
       });
       setErrorMessage(error.response?.data?.message || 'حدث خطأ أثناء الحفظ');
       setLoading(false);
@@ -225,7 +226,7 @@ function Violations() {
     setErrorMessage('');
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async () => {
     setLoading(true);
     setErrorMessage('');
     try {
@@ -233,10 +234,11 @@ function Violations() {
       if (!token) {
         setErrorMessage('التوكن غير موجود، يرجى تسجيل الدخول مرة أخرى');
         setLoading(false);
+        setShowConfirmDialog(false);
         return;
       }
-      await axios.delete(`http://nilemix.mywire.org:5000/api/violations/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/violations/${deleteId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       setSuccessMessage('تم حذف المخالفة بنجاح');
       setShowSuccessAnimation(true);
@@ -244,16 +246,30 @@ function Violations() {
         setShowSuccessAnimation(false);
         setLoading(false);
         fetchViolations();
-      }, 1200);
+        setShowConfirmDialog(false);
+        setDeleteId(null);
+      }, 1500);
     } catch (error) {
       console.error('خطأ في حذف المخالفة:', {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
       });
       setErrorMessage(error.response?.data?.message || 'حدث خطأ أثناء الحذف');
       setLoading(false);
+      setShowConfirmDialog(false);
+      setDeleteId(null);
     }
+  };
+
+  const handleShowConfirmDialog = (id) => {
+    setDeleteId(id);
+    setShowConfirmDialog(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDialog(false);
+    setDeleteId(null);
   };
 
   const resetForm = () => {
@@ -272,12 +288,23 @@ function Violations() {
   };
 
   const handleImageClick = (imageUrl) => {
-    console.log('تم تحديد الصورة:', `http://nilemix.mywire.org:5000${imageUrl}`);
+    const fullImageUrl = `${process.env.REACT_APP_API_URL}${imageUrl}`;
+    console.log('تم تحديد الصورة:', fullImageUrl);
     setSelectedImage(imageUrl);
+    setImageError(null);
   };
 
   const handleCloseModal = () => {
     setSelectedImage(null);
+    setImageError(null);
+  };
+
+  const handleImageError = (e) => {
+    console.error('فشل تحميل الصورة:', e.target.src, {
+      status: e.target.status,
+      statusText: e.target.statusText,
+    });
+    setImageError(`فشل تحميل الصورة: ${e.target.src}. تحقق من أن الصورة موجودة على الخادم أو حاول رفع صورة جديدة.`);
   };
 
   const cardVariants = {
@@ -287,16 +314,16 @@ function Violations() {
       y: 0,
       scale: 1,
       transition: {
-        duration: 0.6,
-        ease: [0.6, -0.05, 0.01, 0.99],
+        duration: 0.9,
+        ease: [0.68, -0.55, 0.265, 1.55],
         type: 'spring',
-        stiffness: 120,
-        damping: 15,
-        staggerChildren: 0.1
-      }
+        stiffness: 90,
+        damping: 25,
+        staggerChildren: 0.2,
+      },
     },
-    hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(124, 58, 237, 0.2)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeInOut' } },
+    hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(139, 92, 246, 0.25)', transition: { duration: 0.6, ease: 'easeInOut' } },
+    tap: { scale: 0.98, transition: { duration: 0.3, ease: 'easeInOut' } },
   };
 
   const cardChildVariants = {
@@ -305,20 +332,37 @@ function Violations() {
       opacity: 1,
       x: 0,
       transition: {
-        duration: 0.4,
-        ease: [0.6, -0.05, 0.01, 0.99]
-      }
+        duration: 0.7,
+        ease: [0.68, -0.55, 0.265, 1.55],
+      },
     },
   };
 
+  const imageVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: [0.68, -0.55, 0.265, 1.55] } },
+    hover: { scale: 1.12, boxShadow: '0 6px 16px rgba(139, 92, 246, 0.35)', transition: { duration: 0.6, ease: 'easeInOut' } },
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto">
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-br from-blue-100/30 via-purple-100/30 to-pink-100/30"
+        animate={{
+          background: [
+            'linear-gradient(135deg, rgba(219, 234, 254, 0.3), rgba(221, 214, 254, 0.3), rgba(252, 231, 243, 0.3))',
+            'linear-gradient(135deg, rgba(219, 234, 254, 0.5), rgba(221, 214, 254, 0.5), rgba(252, 231, 243, 0.5))',
+            'linear-gradient(135deg, rgba(219, 234, 254, 0.3), rgba(221, 214, 254, 0.3), rgba(252, 231, 243, 0.3))',
+          ],
+        }}
+        transition={{ duration: 15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+      />
       <div className="container mx-auto relative z-10 max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-5xl">
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 }}
-          className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-8 sm:mb-10 text-right tracking-tight"
+          transition={{ duration: 0.9, ease: [0.68, -0.55, 0.265, 1.55], type: 'spring', stiffness: 90, damping: 25 }}
+          className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-8 sm:mb-10 text-right tracking-tight drop-shadow-lg"
         >
           صفحة المخالفات
         </motion.h2>
@@ -327,7 +371,7 @@ function Violations() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
             className="flex justify-center mb-8"
           >
             <CustomLoadingSpinner />
@@ -338,8 +382,8 @@ function Violations() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="text-gray-900 bg-purple-50 p-4 rounded-xl shadow-sm mb-6 text-right text-sm sm:text-base"
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            className="text-gray-800 bg-white/90 backdrop-blur-sm border border-purple-200/50 p-4 rounded-xl shadow-xl mb-6 text-right text-sm sm:text-base"
           >
             {successMessage}
           </motion.p>
@@ -349,21 +393,23 @@ function Violations() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="text-red-600 bg-red-50 p-4 rounded-xl shadow-sm mb-6 text-right text-sm sm:text-base"
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            className="text-red-600 bg-red-50/90 backdrop-blur-sm border border-red-200/50 p-4 rounded-xl shadow-xl mb-6 text-right text-sm sm:text-base"
           >
             {errorMessage}
           </motion.p>
         )}
-
         {/* نموذج الإضافة/التعديل */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={cardVariants}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-md mb-8 border border-gray-200/50"
+          className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl mb-8 border border-purple-200/50"
         >
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 text-right">تسجيل مخالفة جديدة أو تعديل</h3>
+          <div className="flex items-center space-x-4 space-x-reverse mb-6">
+            <CustomViolationIcon />
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">تسجيل مخالفة جديدة أو تعديل</h3>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4 text-right">
             <input
               type="text"
@@ -372,7 +418,7 @@ function Violations() {
               value={formData.employeeCode}
               onChange={handleInputChange}
               onBlur={handleEmployeeCodeBlur}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
               required
             />
             <input
@@ -381,7 +427,7 @@ function Violations() {
               placeholder="اسم الموظف"
               value={formData.employeeName}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none text-right bg-gray-50/50 backdrop-blur-sm shadow-sm"
               readOnly
             />
             <input
@@ -390,7 +436,7 @@ function Violations() {
               placeholder="القسم"
               value={formData.department}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none text-right bg-gray-50/50 backdrop-blur-sm shadow-sm"
               readOnly
             />
             <input
@@ -399,7 +445,7 @@ function Violations() {
               placeholder="سعر المخالفة"
               value={formData.violationPrice}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
               required
             />
             <input
@@ -407,7 +453,7 @@ function Violations() {
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
               required
             />
             <input
@@ -416,7 +462,7 @@ function Violations() {
               placeholder="كود العربية"
               value={formData.vehicleCode}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
               required
             />
             <input
@@ -425,7 +471,7 @@ function Violations() {
               placeholder="المحطة"
               value={formData.station}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
               required
             />
             <input
@@ -433,19 +479,25 @@ function Violations() {
               name="violationImage"
               onChange={handleFileChange}
               accept="image/*"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 text-right"
+              className="w-full p-3 border border-purple-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-right bg-white/70 backdrop-blur-sm transition-all duration-600 shadow-sm hover:shadow-md"
             />
-            <button type="submit" className="w-full bg-purple-600 text-white p-3 rounded-lg font-bold hover:bg-purple-700 transition">
+            <button
+              type="submit"
+              className="w-full bg-purple-600 text-white p-3 rounded-lg font-bold hover:bg-purple-700 transition-all duration-600 shadow-md hover:shadow-lg"
+            >
               {editId ? 'حفظ التعديل' : 'إضافة مخالفة'}
             </button>
             {editId && (
-              <button type="button" onClick={resetForm} className="w-full bg-gray-600 text-white p-3 rounded-lg font-bold hover:bg-gray-700 transition mt-2">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="w-full bg-gray-600 text-white p-3 rounded-lg font-bold hover:bg-gray-700 transition-all duration-600 shadow-md hover:shadow-lg mt-2"
+              >
                 إلغاء التعديل
               </button>
             )}
           </form>
         </motion.div>
-
         {/* عرض القائمة في كاردات */}
         <motion.div
           initial="hidden"
@@ -459,7 +511,7 @@ function Violations() {
               variants={cardChildVariants}
               whileHover="hover"
               whileTap="tap"
-              className="bg-white p-6 sm:p-8 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200/50"
+              className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl transition-all duration-600 border border-purple-200/50"
             >
               <div className="flex items-center space-x-4 space-x-reverse">
                 <CustomViolationIcon />
@@ -472,10 +524,14 @@ function Violations() {
                   <p className="text-gray-600 text-sm sm:text-base">كود العربية: {violation.vehicleCode}</p>
                   <p className="text-gray-600 text-sm sm:text-base">المحطة: {violation.station}</p>
                   {violation.violationImage && (
-                    <img
-                      src={`http://nilemix.mywire.org:5000${violation.violationImage}`}
+                    <motion.img
+                      src={`${process.env.REACT_APP_API_URL}${violation.violationImage}`}
                       alt="صورة المخالفة"
-                      className="w-32 h-32 object-cover rounded-lg mt-2 cursor-pointer"
+                      variants={imageVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                      className="w-32 h-32 object-cover rounded-lg mt-2 cursor-pointer shadow-md"
                       onClick={() => handleImageClick(violation.violationImage)}
                       onError={(e) => {
                         console.error('فشل تحميل الصورة:', e.target.src);
@@ -486,17 +542,22 @@ function Violations() {
                 </div>
               </div>
               <div className="mt-4 flex justify-end space-x-2 space-x-reverse">
-                <button onClick={() => handleEdit(violation)} className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition">
+                <button
+                  onClick={() => handleEdit(violation)}
+                  className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-all duration-600 shadow-sm hover:shadow-md"
+                >
                   تعديل
                 </button>
-                <button onClick={() => handleDelete(violation._id)} className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition">
+                <button
+                  onClick={() => handleShowConfirmDialog(violation._id)}
+                  className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-all duration-600 shadow-sm hover:shadow-md"
+                >
                   حذف
                 </button>
               </div>
             </motion.div>
           ))}
         </motion.div>
-
         {/* مودال تكبير الصورة */}
         <AnimatePresence>
           {selectedImage && (
@@ -504,7 +565,7 @@ function Violations() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
               className="fixed inset-0 flex items-center justify-center bg-black/80 z-50 p-4"
               onClick={handleCloseModal}
             >
@@ -512,24 +573,34 @@ function Violations() {
                 initial={{ scale: 0.7, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.7, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.6, -0.05, 0.01, 0.99] }}
-                className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center"
+                transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                className="relative max-w-[95vw] max-h-[95vh] flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-200/50 p-4"
                 onClick={(e) => e.stopPropagation()}
               >
-                <img
-                  src={`http://nilemix.mywire.org:5000${selectedImage}`}
-                  alt="صورة المخالفة المكبرة"
-                  className="max-w-full max-h-[95vh] object-contain"
-                  onError={(e) => {
-                    console.error('فشل تحميل الصورة المكبرة:', e.target.src);
-                    setErrorMessage('فشل تحميل الصورة المكبرة');
-                    setSelectedImage(null);
-                  }}
-                  onLoad={() => console.log('تم تحميل الصورة المكبرة بنجاح')}
-                />
+                {imageError ? (
+                  <div className="flex flex-col items-center justify-center max-w-full max-h-[90vh]">
+                    <img
+                      src="/placeholder-image.jpg"
+                      alt="صورة احتياطية"
+                      className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-md"
+                    />
+                    <p className="text-red-600 text-sm mt-2">{imageError}</p>
+                  </div>
+                ) : (
+                  <motion.img
+                    src={`${process.env.REACT_APP_API_URL}${selectedImage}`}
+                    alt="صورة المخالفة المكبرة"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.7, ease: [0.68, -0.55, 0.265, 1.55] }}
+                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-lg"
+                    onError={handleImageError}
+                    onLoad={() => console.log('تم تحميل الصورة المكبرة بنجاح:', `${process.env.REACT_APP_API_URL}${selectedImage}`)}
+                  />
+                )}
                 <button
                   onClick={handleCloseModal}
-                  className="absolute top-4 right-4 bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold hover:bg-red-700 transition"
+                  className="absolute top-4 right-4 bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold hover:bg-red-700 transition-all duration-600 shadow-sm hover:shadow-md"
                 >
                   ×
                 </button>
@@ -537,17 +608,56 @@ function Violations() {
             </motion.div>
           )}
         </AnimatePresence>
-
+        {/* نافذة تأكيد الحذف */}
+        <AnimatePresence>
+          {showConfirmDialog && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              className="fixed inset-0 flex items-center justify-center bg-black/80 z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.7, opacity: 0 }}
+                transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-purple-200/50 text-right max-w-sm w-full"
+              >
+                <h3 className="text-lg font-bold text-gray-900 mb-4">تأكيد الحذف</h3>
+                <p className="text-gray-600 mb-6">هل أنت متأكد أنك تريد حذف هذه المخالفة؟ لا يمكن التراجع عن هذا الإجراء.</p>
+                <div className="flex justify-end space-x-2 space-x-reverse">
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-all duration-600 shadow-sm hover:shadow-md"
+                  >
+                    نعم، احذف
+                  </button>
+                  <button
+                    onClick={handleCancelDelete}
+                    className="bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700 transition-all duration-600 shadow-sm hover:shadow-md"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* نافذة النجاح */}
         <AnimatePresence>
           {showSuccessAnimation && (
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
-              transition={{ duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 }}
-              className="fixed inset-0 flex items-center justify-center bg-black/20 z-50"
+              transition={{ duration: 0.9, ease: [0.68, -0.55, 0.265, 1.55], type: 'spring', stiffness: 90, damping: 25 }}
+              className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
             >
-              <CustomCheckIcon />
+              <div className="bg-white/90 backdrop-blur-sm p-8 rounded-full shadow-xl border border-purple-200/50">
+                <CustomCheckIcon />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
