@@ -34,10 +34,10 @@ function CreateShift() {
   const [gracePeriod, setGracePeriod] = useState('');
   const [deductions, setDeductions] = useState([]);
   const [sickLeaveDeduction, setSickLeaveDeduction] = useState('');
-  const [overtimeBasis, setOvertimeBasis] = useState('basicSalary'); // جديد: أساس حساب الساعات الإضافية
-  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1'); // جديد: معدل الساعات الإضافية
-  const [fridayOvertimeBasis, setFridayOvertimeBasis] = useState('basicSalary'); // جديد: أساس يوم الجمعة
-  const [fridayOvertimeMultiplier, setFridayOvertimeMultiplier] = useState('1'); // جديد: معدل يوم الجمعة
+  const [overtimeBasis, setOvertimeBasis] = useState('basicSalary');
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('1');
+  const [fridayOvertimeBasis, setFridayOvertimeBasis] = useState('basicSalary');
+  const [fridayOvertimeMultiplier, setFridayOvertimeMultiplier] = useState('1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -150,9 +150,7 @@ function CreateShift() {
           }
         }
       }
-
       const workDaysNumbers = workDays.map(day => dayMap[day]);
-
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,10 +166,10 @@ function CreateShift() {
           gracePeriod,
           deductions,
           sickLeaveDeduction,
-          overtimeBasis, // جديد
-          overtimeMultiplier: Number(overtimeMultiplier), // جديد
-          fridayOvertimeBasis, // جديد
-          fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier), // جديد
+          overtimeBasis,
+          overtimeMultiplier: Number(overtimeMultiplier),
+          fridayOvertimeBasis,
+          fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier),
         }),
       });
       const data = await response.json();
@@ -187,7 +185,7 @@ function CreateShift() {
         setGracePeriod('');
         setDeductions([]);
         setSickLeaveDeduction('');
-        setOvertimeBasis('basicSalary'); // إعادة تعيين
+        setOvertimeBasis('basicSalary');
         setOvertimeMultiplier('1');
         setFridayOvertimeBasis('basicSalary');
         setFridayOvertimeMultiplier('1');
@@ -483,7 +481,6 @@ function CreateShift() {
                 <option value="full">يوم كامل</option>
               </select>
             </div>
-            {/* جديد: قسم حساب الساعات الإضافية */}
             <div className="col-span-1 md:col-span-2">
               <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
                 حساب الساعات الإضافية
@@ -508,7 +505,6 @@ function CreateShift() {
                 </select>
               </div>
             </div>
-            {/* جديد: قسم حساب الساعات الإضافية يوم الجمعة */}
             <div className="col-span-1 md:col-span-2">
               <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
                 حساب الساعات الإضافية يوم الجمعة

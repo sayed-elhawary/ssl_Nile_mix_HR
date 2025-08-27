@@ -4,19 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-16 w-16"
+    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.7, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-600"
+      className="h-full w-full text-purple-500"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={3}
-      initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.9, ease: [0.6, -0.05, 0.01, 0.99] } }}
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
@@ -39,7 +39,7 @@ const CustomLoadingSpinner = () => (
   </motion.div>
 );
 
-function Login({ setIsAuthenticated }) {
+function Login({ setIsAuthenticated, setUserRole }) {
   const [employeeCode, setEmployeeCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,13 +62,15 @@ function Login({ setIsAuthenticated }) {
       const data = await response.json();
       if (data.success && data.token) {
         localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.user.role);
         setIsAuthenticated(true);
+        setUserRole(data.user.role);
         setShowSuccessAnimation(true);
         setSuccessMessage('تم تسجيل الدخول بنجاح');
         setTimeout(() => {
           setShowSuccessAnimation(false);
           navigate('/dashboard');
-        }, 2000);
+        }, 1000);
       } else {
         setError('كود الموظف أو كلمة المرور غير صحيحة');
       }
@@ -81,17 +83,32 @@ function Login({ setIsAuthenticated }) {
 
   const formVariants = {
     hidden: { opacity: 0, y: 50, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 150, damping: 18 } },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } },
   };
 
   const inputVariants = {
-    hover: { scale: 1.02, transition: { duration: 0.3, ease: 'easeInOut' } },
-    focus: { borderColor: '#7C3AED', boxShadow: '0 0 8px rgba(124, 58, 237, 0.5)', transition: { duration: 0.3 } },
+    hover: {
+      scale: 1.03,
+      borderColor: '#6B46C1',
+      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+      transition: { duration: 0.4, ease: 'easeInOut' },
+    },
+    focus: {
+      scale: 1.03,
+      borderColor: '#6B46C1',
+      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+      transition: { duration: 0.4, ease: 'easeInOut' },
+    },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 8px 16px rgba(124, 58, 237, 0.3)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.98, transition: { duration: 0.2 } },
+    hover: {
+      scale: 1.05,
+      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+      backgroundColor: '#6B46C1',
+      transition: { duration: 0.4, ease: 'easeInOut' },
+    },
+    tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
@@ -142,7 +159,7 @@ function Login({ setIsAuthenticated }) {
             type="text"
             value={employeeCode}
             onChange={(e) => setEmployeeCode(e.target.value)}
-            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md text-right"
+            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 text-sm shadow-sm text-right"
             required
             disabled={loading}
             placeholder="أدخل كود الموظف"
@@ -157,7 +174,7 @@ function Login({ setIsAuthenticated }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md text-right"
+            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none transition-all duration-300 bg-gray-50 text-sm shadow-sm text-right"
             required
             disabled={loading}
             placeholder="أدخل كلمة المرور"
@@ -172,7 +189,7 @@ function Login({ setIsAuthenticated }) {
           whileTap="tap"
           type="submit"
           onClick={handleSubmit}
-          className="w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition-all duration-300 font-semibold text-sm shadow-md hover:shadow-lg"
+          className="w-full bg-purple-600 text-white py-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-md"
           disabled={loading}
         >
           {loading ? <CustomLoadingSpinner /> : 'تسجيل الدخول'}
@@ -180,11 +197,11 @@ function Login({ setIsAuthenticated }) {
         <AnimatePresence>
           {showSuccessAnimation && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center z-50 bg-black/20"
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
             >
               <CustomCheckIcon />
             </motion.div>

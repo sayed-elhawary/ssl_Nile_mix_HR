@@ -94,7 +94,6 @@ function EditUser() {
         console.error('خطأ في جلب الموظفين:', err);
         setError(`حدث خطأ أثناء جلب بيانات الموظفين: ${err.message}`);
       }
-
       try {
         const shiftsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/shift`, {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -225,7 +224,6 @@ function EditUser() {
     try {
       const updates = {};
       const user = users.find((u) => u._id === userId);
-
       if (type === 'edit') {
         updates.totalSalaryWithAllowances = formData.totalSalaryWithAllowances ? parseFloat(formData.totalSalaryWithAllowances) : user?.totalSalaryWithAllowances || 0;
         updates.basicSalary = formData.basicSalary ? parseFloat(formData.basicSalary) : user?.basicSalary || 0;
@@ -242,9 +240,7 @@ function EditUser() {
           (updates.medicalInsurance || 0) -
           (updates.socialInsurance || 0)
         ).toFixed(2);
-
         if (formData.password) updates.password = formData.password;
-
         const response = await fetch(`${process.env.REACT_APP_API_URL}/api/user/update/${userId}`, {
           method: 'PUT',
           headers: {
@@ -253,7 +249,6 @@ function EditUser() {
           },
           body: JSON.stringify(updates),
         });
-
         if (!response.ok) throw new Error(`فشل التحديث! حالة HTTP: ${response.status}`);
       } else if (type === 'percentageIncreaseTotal') {
         if (!formData.percentageIncreaseTotal || isNaN(formData.percentageIncreaseTotal) || formData.percentageIncreaseTotal < 0) {
@@ -326,13 +321,11 @@ function EditUser() {
           const si = updates.socialInsurance || user.socialInsurance || 0;
           updates.netSalary = parseFloat(ts + (bb * bp / 100) + ma - mi - si).toFixed(2);
         }
-
         if (!updates[type] || isNaN(updates[type]) || updates[type] < 0) {
           setError('يرجى إدخال قيمة صحيحة وغير سالبة');
           setLoading(false);
           return;
         }
-
         await fetch(`${process.env.REACT_APP_API_URL}/api/user/update-many`, {
           method: 'PUT',
           headers: {
@@ -346,7 +339,6 @@ function EditUser() {
           }),
         });
       }
-
       const usersResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/user`, {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
       });

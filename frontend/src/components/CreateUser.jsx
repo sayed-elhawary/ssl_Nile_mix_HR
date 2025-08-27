@@ -33,15 +33,15 @@ function CreateUser() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
-  const [totalSalaryWithAllowances, setTotalSalaryWithAllowances] = useState(''); // تغيير الاسم من basicSalary إلى totalSalaryWithAllowances
-  const [basicSalary, setBasicSalary] = useState(''); // الحقل الجديد المضاف: الراتب الأساسي
+  const [totalSalaryWithAllowances, setTotalSalaryWithAllowances] = useState('');
+  const [basicSalary, setBasicSalary] = useState('');
   const [basicBonus, setBasicBonus] = useState('');
   const [bonusPercentage, setBonusPercentage] = useState('');
   const [medicalInsurance, setMedicalInsurance] = useState('');
   const [socialInsurance, setSocialInsurance] = useState('');
   const [mealAllowance, setMealAllowance] = useState('');
   const [shiftType, setShiftType] = useState('');
-  const [workDays, setWorkDays] = useState(''); // حالة لعرض workDays
+  const [workDays, setWorkDays] = useState('');
   const [annualLeaveBalance, setAnnualLeaveBalance] = useState('');
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -72,10 +72,9 @@ function CreateUser() {
     setShiftType(selectedShiftId);
     const selectedShift = shifts.find((shift) => shift._id === selectedShiftId);
     if (selectedShift) {
-      // لو workDays هو array، خد طوله، وإلا استخدم القيمة مباشرة
       const workDaysValue = Array.isArray(selectedShift.workDays)
         ? selectedShift.workDays.length
-        : selectedShift.workDays || 30; // قيمة افتراضية 30 لو مفيش workDays
+        : selectedShift.workDays || 30;
       setWorkDays(workDaysValue.toString());
     } else {
       setWorkDays('');
@@ -88,7 +87,11 @@ function CreateUser() {
     setError('');
     setSuccessMessage('');
     try {
-      const netSalary = parseFloat(totalSalaryWithAllowances) + (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) + parseFloat(mealAllowance) - parseFloat(medicalInsurance) - parseFloat(socialInsurance);
+      const netSalary = parseFloat(totalSalaryWithAllowances) + 
+        (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) + 
+        parseFloat(mealAllowance) - 
+        parseFloat(medicalInsurance) - 
+        parseFloat(socialInsurance);
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/user/create`, {
         method: 'POST',
         headers: {
@@ -100,15 +103,15 @@ function CreateUser() {
           password,
           name,
           department,
-          totalSalaryWithAllowances: parseFloat(totalSalaryWithAllowances), // تغيير الاسم
-          basicSalary: parseFloat(basicSalary), // الحقل الجديد المضاف
+          totalSalaryWithAllowances: parseFloat(totalSalaryWithAllowances),
+          basicSalary: parseFloat(basicSalary),
           basicBonus: parseFloat(basicBonus),
           bonusPercentage: parseFloat(bonusPercentage),
           medicalInsurance: parseFloat(medicalInsurance),
           socialInsurance: parseFloat(socialInsurance),
           mealAllowance: parseFloat(mealAllowance),
           shiftType,
-          workDays: parseInt(workDays), // تحويل workDays إلى رقم
+          workDays: parseInt(workDays),
           annualLeaveBalance: parseFloat(annualLeaveBalance),
           netSalary: parseFloat(netSalary),
         }),
@@ -123,7 +126,7 @@ function CreateUser() {
         setName('');
         setDepartment('');
         setTotalSalaryWithAllowances('');
-        setBasicSalary(''); // إعادة تعيين الحقل الجديد
+        setBasicSalary('');
         setBasicBonus('');
         setBonusPercentage('');
         setMedicalInsurance('');

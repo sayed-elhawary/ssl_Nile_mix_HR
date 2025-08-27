@@ -17,15 +17,12 @@ import socket from './socket';
 // Error Boundary لالتقاط أخطاء الـ rendering
 class ErrorBoundary extends Component {
   state = { hasError: false, error: null };
-
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
-
   componentDidCatch(error, errorInfo) {
     console.error('Error Boundary Caught:', error, errorInfo);
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -61,35 +58,62 @@ const RouteLogger = () => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'employee');
 
   useEffect(() => {
-    // تسجيل حالة المصادقة
     const token = localStorage.getItem('token');
-    console.log('التوكن:', token, 'isAuthenticated:', isAuthenticated);
-
-    // التحقق من اتصال Socket.IO
+    console.log('التوكن:', token, 'isAuthenticated:', isAuthenticated, 'role:', userRole);
     socket.on('connect', () => {
       console.log('Socket.IO متصل:', socket.id);
       if (isAuthenticated) {
         socket.emit('message', 'Frontend connected!');
       }
     });
-
     socket.on('connect_error', (error) => {
       console.error('خطأ في اتصال Socket.IO:', error.message);
     });
-
     socket.on('message', (data) => {
       console.log('رسالة من الـ backend:', data);
     });
-
-    // تنظيف عند إغلاق التطبيق
     return () => {
       socket.off('connect');
       socket.off('connect_error');
       socket.off('message');
     };
   }, [isAuthenticated]);
+
+  // تعريف الصفحات المسموح بها لكل دور
+  const allowedRoutes = {
+    admin: [
+      '/dashboard',
+      '/create-shift',
+      '/create-user',
+      '/edit-user',
+      '/settings',
+      '/attendance-upload',
+      '/monthly-salary-report',
+      '/monthly-bonus-report',
+      '/violations',
+      '/create-advance'
+    ],
+    gps: [
+      '/dashboard',
+      '/monthly-salary-report',
+      '/monthly-bonus-report',
+      '/violations'
+    ],
+    employee: [
+      '/dashboard',
+      '/monthly-salary-report',
+      '/monthly-bonus-report',
+      '/violations'
+    ]
+  };
+
+  // دالة للتحقق من الوصول إلى المسار
+  const canAccessRoute = (path) => {
+    return allowedRoutes[userRole].includes(path);
+  };
 
   return (
     <ErrorBoundary>
@@ -100,7 +124,7 @@ function App() {
           <Routes>
             <Route
               path="/login"
-              element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login setIsAuthenticated={setIsAuthenticated} />}
+              element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />}
             />
             <Route
               path="/"
@@ -108,52 +132,48 @@ function App() {
             />
             <Route
               path="/dashboard"
-              element={isAuthenticated ? <Dashboard socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/dashboard') ? <Dashboard socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/create-shift"
-              element={isAuthenticated ? <CreateShift socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/create-shift') ? <CreateShift socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/create-user"
-              element={isAuthenticated ? <CreateUser socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/create-user') ? <CreateUser socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/edit-user"
-              element={isAuthenticated ? <EditUser socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/edit-user') ? <EditUser socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/settings"
-              element={isAuthenticated ? <Settings socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/settings') ? <Settings socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/attendance-upload"
-              element={
-                isAuthenticated ? (
-                  <>
-                    {console.log('دخول إلى /attendance-upload، isAuthenticated:', isAuthenticated)}
-                    <AttendanceUpload socket={socket} isAuthenticated={isAuthenticated} />
-                  </>
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
+              element={isAuthenticated && canAccessRoute('/attendance-upload') ? (
+                <>
+                  {console.log('دخول إلى /attendance-upload، isAuthenticated:', isAuthenticated)}
+                  <AttendanceUpload socket={socket} isAuthenticated={isAuthenticated} />
+                </>
+              ) : <Navigate to="/login" />}
             />
             <Route
               path="/monthly-salary-report"
-              element={isAuthenticated ? <MonthlySalaryReport socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/monthly-salary-report') ? <MonthlySalaryReport socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/monthly-bonus-report"
-              element={isAuthenticated ? <MonthlyBonusReport socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/monthly-bonus-report') ? <MonthlyBonusReport socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/violations"
-              element={isAuthenticated ? <Violations socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/violations') ? <Violations socket={socket} /> : <Navigate to="/login" />}
             />
             <Route
               path="/create-advance"
-              element={isAuthenticated ? <CreateAdvance socket={socket} /> : <Navigate to="/login" />}
+              element={isAuthenticated && canAccessRoute('/create-advance') ? <CreateAdvance socket={socket} /> : <Navigate to="/login" />}
             />
             <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
           </Routes>

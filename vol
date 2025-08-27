@@ -1,17 +1,15 @@
+// backend/models/Violation.js
 const mongoose = require('mongoose');
 
 const violationSchema = new mongoose.Schema({
   employeeCode: { type: String, required: true },
   employeeName: { type: String, required: true },
-  department: { type: String, default: '' },
   violationPrice: { type: Number, required: true, min: [0, 'سعر المخالفة يجب أن يكون أكبر من 0'] },
-  date: { type: Date, required: true },
-  vehicleCode: { type: String, default: '' },
-  station: { type: String, default: '' },
-  violationImage: { type: String, default: '' },
+  date: { type: Date, required: true }, // يجب أن يكون Date لتسهيل التعامل مع التواريخ
+  description: { type: String, default: '' },
 }, { timestamps: true });
 
-// إضافة فهرس لتحسين الأداء
 violationSchema.index({ employeeCode: 1, date: 1 });
 
 module.exports = mongoose.model('Violation', violationSchema);
+

@@ -5,88 +5,90 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType } from 'docx';
-
 import { Pencil, Download } from 'lucide-react';
 
+// Custom Check Icon
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-16 w-16"
+    className="relative h-12 w-12"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.7, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-600"
+      className="h-full w-full text-purple-500"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={3}
-      initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.9, ease: [0.6, -0.05, 0.01, 0.99] } }}
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
   </motion.div>
 );
 
+// Custom Loading Spinner
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
+    exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.div
-      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
+      className="h-8 w-8 border-3 border-purple-500 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
+    <span className="mr-2 text-purple-500 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
-const ReportRow = memo(({ report, handleEdit }) => {
+const ReportRow = memo(({ report, handleEdit, userRole }) => {
   const formatNumber = (num) => Number.isFinite(num) ? num.toFixed(2) : '0.00';
   return (
     <motion.tr
       variants={{
         hidden: { opacity: 0, x: 20 },
-        visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.6, -0.05, 0.01, 0.99] } }
+        visible: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' } }
       }}
-      className="hover:bg-purple-50 transition-colors duration-200"
+      className="hover:bg-gray-100 transition-colors duration-200"
     >
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.employeeCode}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.name}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(report.basicBonus)}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.shiftType}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.bonusPercentage}%</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.totalAttendanceDays}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{report.totalDeductedDays}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(report.totalDeductions)}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(report.bindingValue)}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(report.productionValue)}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">{formatNumber(report.netBonus)}</td>
-      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-        <motion.button
-          variants={{
-            hover: { scale: 1.05, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)', transition: { duration: 0.3, ease: 'easeInOut' } },
-            tap: { scale: 0.95, transition: { duration: 0.2 } }
-          }}
-          whileHover="hover"
-          whileTap="tap"
-          onClick={() => handleEdit(report)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-        >
-          <Pencil className="inline-block w-4 h-4 ml-2" /> تعديل
-        </motion.button>
-      </td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.employeeCode}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.name}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(report.basicBonus)}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.shiftType}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.bonusPercentage}%</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.totalAttendanceDays}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{report.totalDeductedDays}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(report.totalDeductions)}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(report.bindingValue)}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(report.productionValue)}</td>
+      <td className="py-3 px-4 text-right text-sm text-gray-700 font-semibold">{formatNumber(report.netBonus)}</td>
+      {userRole === 'admin' && (
+        <td className="py-3 px-4 text-right">
+          <motion.button
+            variants={{
+              hover: { scale: 1.2, rotate: 15, transition: { duration: 0.3, ease: 'easeOut' } },
+              tap: { scale: 0.95, transition: { duration: 0.2, ease: 'easeOut' } }
+            }}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={() => handleEdit(report)}
+            className="bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors duration-200 shadow-md"
+          >
+            <Pencil className="h-5 w-5" />
+          </motion.button>
+        </td>
+      )}
     </motion.tr>
   );
 });
 
-const MonthlyBonusReport = () => {
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+function MonthlyBonusReport() {
+  const [yearMonth, setYearMonth] = useState('2025-05');
   const [employeeCode, setEmployeeCode] = useState('');
   const [shiftId, setShiftId] = useState('');
   const [shifts, setShifts] = useState([]);
@@ -101,6 +103,7 @@ const MonthlyBonusReport = () => {
   const [productionValue, setProductionValue] = useState(0);
   const [monthYear, setMonthYear] = useState('');
   const tableRef = useRef(null);
+  const userRole = localStorage.getItem('role') || 'employee';
 
   useEffect(() => {
     const fetchShifts = async () => {
@@ -108,7 +111,7 @@ const MonthlyBonusReport = () => {
       setError('');
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/user/shifts`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         setShifts(response.data);
         if (response.data.length === 0) {
@@ -138,34 +141,38 @@ const MonthlyBonusReport = () => {
     setLoading(true);
     setError('');
     try {
+      const [year, month] = yearMonth.split('-');
+      if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        throw new Error('تنسيق الشهر غير صالح، استخدم YYYY-MM');
+      }
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/user/monthly-bonus-report`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        params: { startDate, endDate, employeeCode, shiftId }
+        params: { yearMonth, employeeCode, shiftId }
       });
-      const processedData = response.data.map(row => ({
+      const processedData = response.data.data || response.data;
+      setReports(processedData.map(row => ({
         ...row,
         basicBonus: Number(row.basicBonus || 0),
         totalDeductions: Number(row.totalDeductions || 0),
         bindingValue: Number(row.bindingValue || 0),
         productionValue: Number(row.productionValue || 0),
         netBonus: Number(row.netBonus || 0)
-      }));
-      setReports(processedData);
+      })));
       setSuccessMessage('تم جلب التقرير بنجاح');
       setShowSuccessAnimation(true);
-      setTimeout(() => setShowSuccessAnimation(false), 1500);
-      if (response.data.length === 0) {
+      setTimeout(() => setShowSuccessAnimation(false), 1000);
+      if (processedData.length === 0) {
         setError('لا توجد تقارير متاحة للمعايير المحددة');
       }
     } catch (error) {
-      console.error('خطأ في جلب التقرير:', error);
+      console.error('Error fetching report:', error.response?.data || error.message);
       if (error.response) {
         if (error.response.status === 401) {
           setError('التوكن غير صالح أو انتهت صلاحيته، يرجى تسجيل الدخول مرة أخرى');
         } else if (error.response.status === 404) {
-          setError('لا يوجد بيانات متاحة لهذا التقرير');
+          setError('التقرير غير موجود أو نقطة النهاية غير متاحة');
         } else {
-          setError(error.response.data.message || 'حدث خطأ أثناء جلب التقرير');
+          setError(error.response.data?.message || 'حدث خطأ أثناء جلب التقرير');
         }
       } else {
         setError('فشل الاتصال بالخادم، تحقق من الاتصال بالإنترنت');
@@ -173,19 +180,11 @@ const MonthlyBonusReport = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, employeeCode, shiftId]);
+  }, [yearMonth, employeeCode, shiftId]);
 
   const handleSearch = useCallback(() => {
-    if (!startDate || !endDate) {
-      setError('يرجى إدخال تاريخ البداية والنهاية');
-      return;
-    }
-    if (new Date(startDate) > new Date(endDate)) {
-      setError('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
-      return;
-    }
     fetchReports();
-  }, [startDate, endDate, fetchReports]);
+  }, [fetchReports]);
 
   const handleShowAll = useCallback(() => {
     setEmployeeCode('');
@@ -197,9 +196,9 @@ const MonthlyBonusReport = () => {
     setSelectedEmployee(report);
     setBindingValue(report.bindingValue || 0);
     setProductionValue(report.productionValue || 0);
-    setMonthYear(startDate.slice(0, 7));
+    setMonthYear(yearMonth);
     setShowModal(true);
-  }, [startDate]);
+  }, [yearMonth]);
 
   const handleSaveEdit = useCallback(async () => {
     if (!window.confirm('هل أنت متأكد من حفظ التغييرات؟')) return;
@@ -222,7 +221,7 @@ const MonthlyBonusReport = () => {
       setTimeout(() => {
         setShowSuccessAnimation(false);
         fetchReports();
-      }, 1500);
+      }, 1000);
     } catch (error) {
       console.error('خطأ في تعديل الحافز:', error);
       if (error.response) {
@@ -282,36 +281,32 @@ const MonthlyBonusReport = () => {
           'قيمة الإنتاج': formatNumber(row.productionValue),
           'قيمة التربيط': formatNumber(row.bindingValue),
           'إجمالي الخصومات': formatNumber(row.totalDeductions),
-          'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
-          'أيام الحضور': formatNumber(row.totalAttendanceDays),
+          'إجمالي الأيام المخصومة': row.totalDeductedDays,
+          'أيام الحضور': row.totalAttendanceDays,
           'نسبة الحافز': `${row.bonusPercentage}%`,
           'اسم الشيفت': row.shiftType,
           'الحافز الأساسي': formatNumber(row.basicBonus),
           'الاسم': row.name,
-          'كود الموظف': row.employeeCode
+          'كود الموظف': row.employeeCode,
         })),
         {
           'الصافي': formatNumber(totals.netBonus),
           'قيمة الإنتاج': formatNumber(totals.productionValue),
           'قيمة التربيط': formatNumber(totals.bindingValue),
           'إجمالي الخصومات': formatNumber(totals.totalDeductions),
-          'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
-          'أيام الحضور': formatNumber(totals.totalAttendanceDays),
+          'إجمالي الأيام المخصومة': totals.totalDeductedDays,
+          'أيام الحضور': totals.totalAttendanceDays,
           'نسبة الحافز': '',
           'اسم الشيفت': '',
           'الحافز الأساسي': formatNumber(totals.basicBonus),
           'الاسم': '',
-          'كود الموظف': 'إجمالي'
+          'كود الموظف': 'إجمالي',
         }
       ];
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      worksheet['!cols'] = [
-        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }
-      ];
-      worksheet['!rtl'] = true;
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'تقرير الحافز الشهري');
-      XLSX.writeFile(workbook, `تقرير_الحافز_الشهري_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'تقرير الحافز الشهري');
+      XLSX.writeFile(wb, 'monthly_bonus_report.xlsx');
     } catch (err) {
       setError(`حدث خطأ أثناء تصدير Excel: ${err.message}`);
     } finally {
@@ -394,329 +389,282 @@ const MonthlyBonusReport = () => {
     }
   }, [reports, formatNumber]);
 
-  const inputVariants = {
-    hover: { scale: 1.02, transition: { duration: 0.3, ease: 'easeInOut' } },
-    focus: { borderColor: '#7C3AED', boxShadow: '0 0 8px rgba(124, 58, 237, 0.5)', transition: { duration: 0.3 } },
+  const tableVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.95, transition: { duration: 0.2 } },
-  };
-
-  const formVariants = {
-    hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99], type: 'spring', stiffness: 120, damping: 15 } },
-  };
-
-  const tableVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99], staggerChildren: 0.1 } },
+    hover: { scale: 1.05, boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', transition: { duration: 0.2, ease: 'easeOut' } },
+    tap: { scale: 0.95, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   const modalVariants = {
-    hidden: { opacity: 0, scale: 0.9, y: 30 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 15, duration: 0.5 } },
-    exit: { opacity: 0, scale: 0.9, y: 30, transition: { duration: 0.3, ease: 'easeInOut' } },
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } },
+  };
+
+  const inputVariants = {
+    hover: { scale: 1.02, borderColor: '#8B5CF6', transition: { duration: 0.2, ease: 'easeOut' } },
+    focus: { scale: 1.02, borderColor: '#8B5CF6', boxShadow: '0 0 0 2px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
-      <motion.div
-        variants={formVariants}
-        initial="hidden"
-        animate="visible"
-        className="container mx-auto relative z-10 max-w-7xl bg-white rounded-3xl shadow-md p-6 sm:p-8 md:p-10 border border-gray-200/50"
-      >
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-8 text-right tracking-tight">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+      <div className="container mx-auto max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-7xl">
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 text-right"
+        >
           تقرير الحافز الشهري
-        </h2>
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
-            >
-              {error}
-            </motion.div>
+        </motion.h2>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="text-red-600 bg-red-50 p-3 rounded-lg mb-6 text-right text-sm"
+          >
+            {error}
+          </motion.p>
+        )}
+        {successMessage && !loading && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="text-green-600 bg-green-50 p-3 rounded-lg mb-6 text-right text-sm"
+          >
+            {successMessage}
+          </motion.p>
+        )}
+        <div className="mb-6 flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 md:space-x-reverse">
+          <motion.input
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
+            type="text"
+            value={employeeCode}
+            onChange={(e) => setEmployeeCode(e.target.value)}
+            placeholder="كود الموظف"
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+          />
+          <motion.input
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
+            type="month"
+            value={yearMonth}
+            onChange={(e) => setYearMonth(e.target.value)}
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+          />
+          <motion.select
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
+            value={shiftId}
+            onChange={(e) => setShiftId(e.target.value)}
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+          >
+            <option value="">كل الشيفتات</option>
+            {shifts.map(shift => (
+              <option key={shift._id} value={shift._id}>
+                {shift.shiftName} ({shift.shiftType})
+              </option>
+            ))}
+          </motion.select>
+          <motion.button
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={handleSearch}
+            className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
+          >
+            بحث
+          </motion.button>
+          <motion.button
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
+            onClick={handleShowAll}
+            className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
+          >
+            عرض الكل
+          </motion.button>
+          {userRole === 'admin' && (
+            <>
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={exportToExcel}
+                className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md flex items-center justify-center"
+              >
+                <Download className="h-4 w-4 ml-2" /> تصدير إلى Excel
+              </motion.button>
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={exportToWord}
+                className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md flex items-center justify-center"
+              >
+                <Download className="h-4 w-4 ml-2" /> تصدير إلى Word
+              </motion.button>
+            </>
           )}
-          {successMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-purple-50 border border-purple-300 text-purple-700 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
-            >
-              {successMessage}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-200/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div>
-            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">من التاريخ</label>
-            <motion.input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-              variants={inputVariants}
-              whileHover="hover"
-              whileFocus="focus"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">إلى التاريخ</label>
-            <motion.input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-              variants={inputVariants}
-              whileHover="hover"
-              whileFocus="focus"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">كود الموظف</label>
-            <motion.input
-              type="text"
-              value={employeeCode}
-              onChange={(e) => setEmployeeCode(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-              placeholder="أدخل كود الموظف"
-              variants={inputVariants}
-              whileHover="hover"
-              whileFocus="focus"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الشيفت</label>
-            <motion.select
-              value={shiftId}
-              onChange={(e) => setShiftId(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-              disabled={shifts.length === 0}
-              variants={inputVariants}
-              whileHover="hover"
-              whileFocus="focus"
-            >
-              <option value="">جميع الشيفتات</option>
-              {shifts.map((shift) => (
-                <option key={shift._id} value={shift._id}>
-                  {shift.shiftName}
-                </option>
-              ))}
-            </motion.select>
-          </div>
-          <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-4 flex-wrap">
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              onClick={handleSearch}
-              className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-              disabled={loading}
-            >
-              {loading ? <CustomLoadingSpinner /> : 'بحث'}
-            </motion.button>
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              onClick={handleShowAll}
-              className="bg-gray-600 text-white px-6 py-3 rounded-xl hover:bg-gray-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-              disabled={loading}
-            >
-              عرض الكل
-            </motion.button>
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              onClick={exportToExcel}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-              disabled={loading || reports.length === 0}
-            >
-              <Download className="inline-block w-5 h-5 ml-2" /> تصدير إلى Excel
-            </motion.button>
-            <motion.button
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              onClick={exportToWord}
-              className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-              disabled={loading || reports.length === 0}
-            >
-              <Download className="inline-block w-5 h-5 ml-2" /> تصدير إلى Word
-            </motion.button>
-          </div>
         </div>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="flex justify-center mb-6"
+          >
+            <CustomLoadingSpinner />
+          </motion.div>
+        )}
         <motion.div
           variants={tableVariants}
           initial="hidden"
           animate="visible"
-          className="bg-white rounded-2xl shadow-md p-6 border border-gray-200/50 mt-8 overflow-x-auto"
+          className="overflow-x-auto rounded-lg border border-gray-200 shadow-md"
           ref={tableRef}
         >
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="flex justify-center py-8"
-            >
-              <CustomLoadingSpinner />
-            </motion.div>
-          )}
-          {!loading && (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">كود الموظف</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">الاسم</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">الحافز الأساسي</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">اسم الشيفت</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">نسبة الحافز</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">أيام الحضور</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">إجمالي الأيام المخصومة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">إجمالي الخصومات</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">قيمة التربيط</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">قيمة الإنتاج</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">الصافي</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-800 uppercase tracking-wider">تعديل</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reports.length === 0 && !error && (
-                  <motion.tr
-                    variants={{
-                      hidden: { opacity: 0, x: 20 },
-                      visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.6, -0.05, 0.01, 0.99] } }
-                    }}
-                  >
-                    <td colSpan="12" className="px-4 py-4 text-center text-sm text-gray-600">
-                      لا توجد بيانات لعرضها
-                    </td>
-                  </motion.tr>
+          <table className="min-w-full divide-y divide-gray-200 bg-white">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">كود الموظف</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">الاسم</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">الحافز الأساسي</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">اسم الشيفت</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">نسبة الحافز</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">أيام الحضور</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">إجمالي الأيام المخصومة</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">إجمالي الخصومات</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">قيمة التربيط</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">قيمة الإنتاج</th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">الصافي</th>
+                {userRole === 'admin' && (
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-gray-800 uppercase">تعديل</th>
                 )}
-                {reports.map((report) => (
-                  <ReportRow key={report.employeeCode} report={report} handleEdit={handleEdit} />
-                ))}
-                {reports.length > 0 && (
-                  <motion.tr
-                    variants={{
-                      hidden: { opacity: 0, x: 20 },
-                      visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.6, -0.05, 0.01, 0.99] } }
-                    }}
-                    className="bg-gray-50 font-semibold"
-                  >
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">إجمالي</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right"></td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(reports.reduce((sum, report) => sum + (report.basicBonus || 0), 0))}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right"></td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right"></td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{reports.reduce((sum, report) => sum + (report.totalAttendanceDays || 0), 0)}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{reports.reduce((sum, report) => sum + (report.totalDeductedDays || 0), 0)}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(reports.reduce((sum, report) => sum + (report.totalDeductions || 0), 0))}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(reports.reduce((sum, report) => sum + (report.bindingValue || 0), 0))}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(reports.reduce((sum, report) => sum + (report.productionValue || 0), 0))}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatNumber(reports.reduce((sum, report) => sum + (report.netBonus || 0), 0))}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right"></td>
-                  </motion.tr>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {reports.map((report) => (
+                <ReportRow key={report.employeeCode} report={report} handleEdit={handleEdit} userRole={userRole} />
+              ))}
+              <motion.tr
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className="bg-gray-100 font-semibold"
+              >
+                <td className="py-3 px-4 text-right text-sm text-gray-800">إجمالي</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(calculateTotals().basicBonus)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{calculateTotals().totalAttendanceDays}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{calculateTotals().totalDeductedDays}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(calculateTotals().totalDeductions)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(calculateTotals().bindingValue)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(calculateTotals().productionValue)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(calculateTotals().netBonus)}</td>
+                {userRole === 'admin' && (
+                  <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
                 )}
-              </tbody>
-            </table>
-          )}
+              </motion.tr>
+            </tbody>
+          </table>
         </motion.div>
         <AnimatePresence>
-          {showSuccessAnimation && (
+          {showModal && userRole === 'admin' && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="fixed inset-0 flex items-center justify-center z-50 bg-black/20"
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
             >
-              <CustomCheckIcon />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {showModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"
-            >
-              <motion.div
-                variants={modalVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="bg-white p-6 sm:p-8 rounded-2xl shadow-md max-w-md w-full border border-gray-200/50"
-              >
-                <h3 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-6 text-right tracking-tight">تعديل الحافز</h3>
-                <div className="mb-6">
-                  <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">قيمة التربيط</label>
-                  <motion.input
-                    type="number"
-                    value={bindingValue}
-                    onChange={(e) => setBindingValue(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-                    placeholder="أدخل قيمة التربيط"
-                    variants={inputVariants}
-                    whileHover="hover"
-                    whileFocus="focus"
-                  />
+              <div className="bg-white p-6 rounded-lg shadow-md max-w-md w-full border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-right">تعديل الحافز</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">قيمة التربيط</label>
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
+                      type="number"
+                      value={bindingValue}
+                      onChange={(e) => setBindingValue(parseFloat(e.target.value) || 0)}
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 text-right">قيمة الإنتاج</label>
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
+                      type="number"
+                      value={productionValue}
+                      onChange={(e) => setProductionValue(parseFloat(e.target.value) || 0)}
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
+                      min="0"
+                    />
+                  </div>
                 </div>
-                <div className="mb-6">
-                  <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">قيمة الإنتاج</label>
-                  <motion.input
-                    type="number"
-                    value={productionValue}
-                    onChange={(e) => setProductionValue(parseFloat(e.target.value) || 0)}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all duration-300 bg-gray-50 text-sm shadow-sm hover:shadow-md"
-                    placeholder="أدخل قيمة الإنتاج"
-                    variants={inputVariants}
-                    whileHover="hover"
-                    whileFocus="focus"
-                  />
-                </div>
-                <div className="flex justify-end gap-4">
+                <div className="mt-6 flex justify-end space-x-3 space-x-reverse">
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={handleSaveEdit}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
-                    disabled={loading}
+                    className="bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   >
-                    {loading ? <CustomLoadingSpinner /> : 'حفظ'}
+                    حفظ
                   </motion.button>
                   <motion.button
                     variants={buttonVariants}
                     whileHover="hover"
                     whileTap="tap"
                     onClick={() => setShowModal(false)}
-                    className="bg-gray-600 text-white px-6 py-3 rounded-xl hover:bg-gray-700 transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md"
+                    className="bg-gray-500 text-white p-3 rounded-lg hover:bg-gray-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   >
                     إلغاء
                   </motion.button>
                 </div>
-              </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+        <AnimatePresence>
+          {showSuccessAnimation && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+            >
+              <div className="bg-white p-4 rounded-full shadow-md">
+                <CustomCheckIcon />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
-};
+}
 
 export default MonthlyBonusReport;

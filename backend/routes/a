@@ -283,7 +283,7 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         totalDeductedDays += Number(att.deductedDays || 0);
         if (att.attendanceStatus === 'إجازة سنوية') totalAnnualLeaveDays++;
         if (att.attendanceStatus === 'إجازة مرضية') totalSickLeaveDays++;
-        if (att.leaveAllowance === 'نعم') totalLeaveAllowance += 1;
+        if (att.attendanceStatus === 'نعم') totalLeaveAllowance += 1;
       }
 
       const mealDeductionPerDay = 50;

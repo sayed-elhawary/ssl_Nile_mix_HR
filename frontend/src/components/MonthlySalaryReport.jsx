@@ -5,18 +5,43 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// مكونات مخصصة للتحميل والنجاح
+// Custom Check Icon
 const CustomCheckIcon = () => (
-  <svg className="w-16 h-16 text-purple-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-  </svg>
+  <motion.div
+    className="relative h-12 w-12"
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+  >
+    <motion.svg
+      className="h-full w-full text-purple-500"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </motion.svg>
+  </motion.div>
 );
 
+// Custom Loading Spinner
 const CustomLoadingSpinner = () => (
-  <svg className="w-16 h-16 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"></path>
-  </svg>
+  <motion.div
+    className="flex items-center justify-center"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
+    exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+  >
+    <motion.div
+      className="h-8 w-8 border-3 border-purple-500 border-t-transparent rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+    />
+    <span className="mr-2 text-purple-500 text-sm font-medium">جارٍ التحميل...</span>
+  </motion.div>
 );
 
 function MonthlySalaryReport() {
@@ -33,6 +58,7 @@ function MonthlySalaryReport() {
   const [editUser, setEditUser] = useState(null);
   const [editValues, setEditValues] = useState({});
   const tableRef = useRef(null);
+  const userRole = localStorage.getItem('role') || 'employee';
 
   useEffect(() => {
     fetchShifts();
@@ -63,26 +89,21 @@ function MonthlySalaryReport() {
     setError('');
     setSuccessMessage('');
     try {
-      // التحقق من صيغة yearMonth
       const [year, month] = yearMonth.split('-');
       if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
         throw new Error('تنسيق الشهر غير صالح، استخدم YYYY-MM');
       }
-
-      // التحقق من وجود التوكن
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('التوكن غير موجود، يرجى تسجيل الدخول مرة أخرى');
       }
-
       let url = `${process.env.REACT_APP_API_URL}/api/user/monthly-salary-report?yearMonth=${yearMonth}`;
       if (employeeCode) url += `&employeeCode=${employeeCode}`;
       if (selectedShift) url += `&shiftId=${selectedShift}`;
-      
+
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 401) {
@@ -96,7 +117,6 @@ function MonthlySalaryReport() {
         }
         throw new Error(errorData.message || 'فشل في جلب التقرير');
       }
-
       const reports = await response.json();
       const processedData = (reports.totals || []).map(row => ({
         ...row,
@@ -115,7 +135,7 @@ function MonthlySalaryReport() {
       setData(processedData);
       setShowSuccessAnimation(true);
       setSuccessMessage('تم جلب التقرير بنجاح');
-      setTimeout(() => setShowSuccessAnimation(false), 2000);
+      setTimeout(() => setShowSuccessAnimation(false), 1000);
     } catch (err) {
       setError(`حدث خطأ أثناء جلب التقرير: ${err.message}`);
       console.error('Error fetching report:', err);
@@ -205,19 +225,9 @@ function MonthlySalaryReport() {
                 totalLoans: Number(responseData.data.totalLoans || 0),
                 loanDeduction: Number(responseData.data.loanDeduction || 0),
                 occasionBonus: Number(responseData.data.occasionBonus || 0),
-                totalDeductions:
-                  Number(row.totalDeductions) -
-                  Number(row.violationDeduction) -
-                  Number(row.loanDeduction) +
-                  Number(responseData.data.violationDeduction || 0) +
-                  Number(responseData.data.loanDeduction || 0),
-                finalSalary:
-                  Number(row.totalOvertimeAmount) -
-                  (Number(row.totalDeductions) -
-                    Number(row.violationDeduction) -
-                    Number(row.loanDeduction) +
-                    Number(responseData.data.violationDeduction || 0) +
-                    Number(responseData.data.loanDeduction || 0)),
+                totalDeductions: Number(responseData.data.totalDeductions || 0),
+                totalOvertimeAmount: Number(responseData.data.totalOvertimeAmount || 0),
+                finalSalary: Number(responseData.data.finalSalary || 0),
               }
             : row
         )
@@ -227,7 +237,7 @@ function MonthlySalaryReport() {
       setTimeout(() => {
         setShowSuccessAnimation(false);
         setEditModalOpen(false);
-      }, 2000);
+      }, 1000);
     } catch (err) {
       setError(`حدث خطأ أثناء التعديل: ${err.message}`);
       console.error('Error saving edit:', err);
@@ -315,66 +325,66 @@ function MonthlySalaryReport() {
       const reversedData = [...data].reverse();
       const excelData = [
         ...reversedData.map(row => ({
-          'كود الموظف': row.employeeCode,
-          'اسم الموظف': row.employeeName,
-          'الراتب الأساسي': formatNumber(row.basicSalary),
-          'الراتب الإجمالي بالبدلات': formatNumber(row.totalSalaryWithAllowances),
-          'التأمين الطبي': formatNumber(row.medicalInsurance),
-          'التأمين الاجتماعي': formatNumber(row.socialInsurance),
-          'بدل الوجبة': formatNumber(row.mealAllowance),
-          'خصومات بدل الوجبة': formatNumber(row.mealDeduction),
-          'بدل الوجبة المتبقي': formatNumber(row.remainingMealAllowance),
-          'نوع الشيفت': row.shiftName,
-          'إجمالي أيام الحضور': formatNumber(row.totalAttendanceDays),
-          'إجمالي الإجازات الأسبوعية': formatNumber(row.totalWeeklyOffDays),
-          'إجمالي بدل الإجازة': formatNumber(row.totalLeaveAllowance),
-          'إجمالي الغياب': formatNumber(row.totalAbsentDays),
-          'إجمالي الساعات المخصومة': formatNumber(row.totalDeductedHours),
-          'إجمالي الإجازات السنوية': formatNumber(row.totalAnnualLeaveDays),
-          'إجمالي خصم الإجازة المرضية': formatNumber(row.totalSickLeaveDeduction),
-          'رصيد الإجازة السنوية': formatNumber(row.annualLeaveBalance),
-          'إجمالي الإجازات الرسمية': formatNumber(row.totalOfficialLeaveDays),
-          'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
-          'إجمالي الساعات الإضافية': formatNumber(row.totalOvertimeHours),
-          'منحة مناسبة': formatNumber(row.occasionBonus),
-          'إجمالي المخالفات': formatNumber(row.totalViolations),
-          'خصم قسط المخالفات': formatNumber(row.violationDeduction),
-          'إجمالي السلف': formatNumber(row.totalLoans),
-          'خصم قسط السلف': formatNumber(row.loanDeduction),
-          'إجمالي قيمة الخصومات': formatNumber(row.totalDeductions),
-          'إجمالي الإضافي': formatNumber(row.totalOvertimeAmount),
           'الصافي': formatNumber(row.finalSalary),
+          'إجمالي الإضافي': formatNumber(row.totalOvertimeAmount),
+          'إجمالي قيمة الخصومات': formatNumber(row.totalDeductions),
+          'خصم قسط السلف': formatNumber(row.loanDeduction),
+          'إجمالي السلف': formatNumber(row.totalLoans),
+          'خصم قسط المخالفات': formatNumber(row.violationDeduction),
+          'إجمالي المخالفات': formatNumber(row.totalViolations),
+          'منحة مناسبة': formatNumber(row.occasionBonus),
+          'إجمالي الساعات الإضافية': formatNumber(row.totalOvertimeHours),
+          'إجمالي الأيام المخصومة': formatNumber(row.totalDeductedDays),
+          'إجمالي الإجازات الرسمية': formatNumber(row.totalOfficialLeaveDays),
+          'رصيد الإجازة السنوية': formatNumber(row.annualLeaveBalance),
+          'إجمالي خصم الإجازة المرضية': formatNumber(row.totalSickLeaveDeduction),
+          'إجمالي الإجازات السنوية': formatNumber(row.totalAnnualLeaveDays),
+          'إجمالي الساعات المخصومة': formatNumber(row.totalDeductedHours),
+          'إجمالي الغياب': formatNumber(row.totalAbsentDays),
+          'إجمالي بدل الإجازة': formatNumber(row.totalLeaveAllowance),
+          'إجمالي الإجازات الأسبوعية': formatNumber(row.totalWeeklyOffDays),
+          'إجمالي أيام الحضور': formatNumber(row.totalAttendanceDays),
+          'نوع الشيفت': row.shiftName,
+          'بدل الوجبة المتبقي': formatNumber(row.remainingMealAllowance),
+          'خصومات بدل الوجبة': formatNumber(row.mealDeduction),
+          'بدل الوجبة': formatNumber(row.mealAllowance),
+          'التأمين الاجتماعي': formatNumber(row.socialInsurance),
+          'التأمين الطبي': formatNumber(row.medicalInsurance),
+          'الراتب الإجمالي بالبدلات': formatNumber(row.totalSalaryWithAllowances),
+          'الراتب الأساسي': formatNumber(row.basicSalary),
+          'اسم الموظف': row.employeeName,
+          'كود الموظف': row.employeeCode,
         })),
         {
-          'كود الموظف': 'إجمالي',
-          'اسم الموظف': '',
-          'الراتب الأساسي': formatNumber(totals.basicSalary),
-          'الراتب الإجمالي بالبدلات': formatNumber(totals.totalSalaryWithAllowances),
-          'التأمين الطبي': formatNumber(totals.medicalInsurance),
-          'التأمين الاجتماعي': formatNumber(totals.socialInsurance),
-          'بدل الوجبة': formatNumber(totals.mealAllowance),
-          'خصومات بدل الوجبة': formatNumber(totals.mealDeduction),
-          'بدل الوجبة المتبقي': formatNumber(totals.remainingMealAllowance),
-          'نوع الشيفت': '',
-          'إجمالي أيام الحضور': formatNumber(totals.totalAttendanceDays),
-          'إجمالي الإجازات الأسبوعية': formatNumber(totals.totalWeeklyOffDays),
-          'إجمالي بدل الإجازة': formatNumber(totals.totalLeaveAllowance),
-          'إجمالي الغياب': formatNumber(totals.totalAbsentDays),
-          'إجمالي الساعات المخصومة': formatNumber(totals.totalDeductedHours),
-          'إجمالي الإجازات السنوية': formatNumber(totals.totalAnnualLeaveDays),
-          'إجمالي خصم الإجازة المرضية': formatNumber(totals.totalSickLeaveDeduction),
-          'رصيد الإجازة السنوية': formatNumber(totals.annualLeaveBalance),
-          'إجمالي الإجازات الرسمية': formatNumber(totals.totalOfficialLeaveDays),
-          'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
-          'إجمالي الساعات الإضافية': formatNumber(totals.totalOvertimeHours),
-          'منحة مناسبة': formatNumber(totals.occasionBonus),
-          'إجمالي المخالفات': formatNumber(totals.totalViolations),
-          'خصم قسط المخالفات': formatNumber(totals.violationDeduction),
-          'إجمالي السلف': formatNumber(totals.totalLoans),
-          'خصم قسط السلف': formatNumber(totals.loanDeduction),
-          'إجمالي قيمة الخصومات': formatNumber(totals.totalDeductions),
-          'إجمالي الإضافي': formatNumber(totals.totalOvertimeAmount),
           'الصافي': formatNumber(totals.finalSalary),
+          'إجمالي الإضافي': formatNumber(totals.totalOvertimeAmount),
+          'إجمالي قيمة الخصومات': formatNumber(totals.totalDeductions),
+          'خصم قسط السلف': formatNumber(totals.loanDeduction),
+          'إجمالي السلف': formatNumber(totals.totalLoans),
+          'خصم قسط المخالفات': formatNumber(totals.violationDeduction),
+          'إجمالي المخالفات': formatNumber(totals.totalViolations),
+          'منحة مناسبة': formatNumber(totals.occasionBonus),
+          'إجمالي الساعات الإضافية': formatNumber(totals.totalOvertimeHours),
+          'إجمالي الأيام المخصومة': formatNumber(totals.totalDeductedDays),
+          'إجمالي الإجازات الرسمية': formatNumber(totals.totalOfficialLeaveDays),
+          'رصيد الإجازة السنوية': formatNumber(totals.annualLeaveBalance),
+          'إجمالي خصم الإجازة المرضية': formatNumber(totals.totalSickLeaveDeduction),
+          'إجمالي الإجازات السنوية': formatNumber(totals.totalAnnualLeaveDays),
+          'إجمالي الساعات المخصومة': formatNumber(totals.totalDeductedHours),
+          'إجمالي الغياب': formatNumber(totals.totalAbsentDays),
+          'إجمالي بدل الإجازة': formatNumber(totals.totalLeaveAllowance),
+          'إجمالي الإجازات الأسبوعية': formatNumber(totals.totalWeeklyOffDays),
+          'إجمالي أيام الحضور': formatNumber(totals.totalAttendanceDays),
+          'نوع الشيفت': '',
+          'بدل الوجبة المتبقي': formatNumber(totals.remainingMealAllowance),
+          'خصومات بدل الوجبة': formatNumber(totals.mealDeduction),
+          'بدل الوجبة': formatNumber(totals.mealAllowance),
+          'التأمين الاجتماعي': formatNumber(totals.socialInsurance),
+          'التأمين الطبي': formatNumber(totals.medicalInsurance),
+          'الراتب الإجمالي بالبدلات': formatNumber(totals.totalSalaryWithAllowances),
+          'الراتب الأساسي': formatNumber(totals.basicSalary),
+          'اسم الموظف': '',
+          'كود الموظف': 'إجمالي',
         },
       ];
       const ws = XLSX.utils.json_to_sheet(excelData);
@@ -463,63 +473,88 @@ function MonthlySalaryReport() {
   };
 
   const tableVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 6px 25px rgba(139, 92, 246, 0.3)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.95, backgroundColor: '#A78BFA', transition: { duration: 0.3, ease: 'easeInOut' } },
+    hover: { scale: 1.05, boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', transition: { duration: 0.2, ease: 'easeOut' } },
+    tap: { scale: 0.95, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.8 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeOut' } },
-    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeIn' } },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+    exit: { opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } },
+  };
+
+  const inputVariants = {
+    hover: { scale: 1.02, borderColor: '#8B5CF6', transition: { duration: 0.2, ease: 'easeOut' } },
+    focus: { scale: 1.02, borderColor: '#8B5CF6', boxShadow: '0 0 0 2px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   const totals = calculateTotals();
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-8 font-noto-sans-arabic relative overflow-hidden dir=rtl">
-      <motion.div
-        variants={tableVariants}
-        initial="hidden"
-        animate="visible"
-        className="container mx-auto relative z-10 max-w-7xl bg-white rounded-3xl shadow-lg p-8 border border-gray-100"
-      >
-        <h2 className="text-3xl font-extrabold text-purple-600 mb-6 text-right tracking-wide drop-shadow-sm">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+      <div className="container mx-auto max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-7xl">
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 text-right"
+        >
           تقرير الرواتب الشهري
-        </h2>
-        {error && <p className="text-red-600 mb-4 text-sm text-right font-medium bg-red-50 p-3 rounded-xl">{error}</p>}
-        {successMessage && (
-          <p className="text-purple-600 mb-4 text-sm text-right font-medium bg-purple-50 p-3 rounded-xl">
-            {successMessage}
-          </p>
+        </motion.h2>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="text-red-600 bg-red-50 p-3 rounded-lg mb-6 text-right text-sm"
+          >
+            {error}
+          </motion.p>
         )}
-        {showSuccessAnimation && (
-          <div className="flex justify-center mb-6">
-            <CustomCheckIcon />
-          </div>
+        {successMessage && !loading && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="text-green-600 bg-green-50 p-3 rounded-lg mb-6 text-right text-sm"
+          >
+            {successMessage}
+          </motion.p>
         )}
         <div className="mb-6 flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 md:space-x-reverse">
-          <input
+          <motion.input
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
             type="text"
             value={employeeCode}
             onChange={(e) => setEmployeeCode(e.target.value)}
             placeholder="كود الموظف"
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
           />
-          <input
+          <motion.input
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
             type="month"
             value={yearMonth}
             onChange={(e) => setYearMonth(e.target.value)}
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
           />
-          <select
+          <motion.select
+            variants={inputVariants}
+            whileHover="hover"
+            whileFocus="focus"
             value={selectedShift}
             onChange={(e) => setSelectedShift(e.target.value)}
-            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+            className="w-full md:w-1/5 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
           >
             <option value="">كل الشيفتات</option>
             {shifts.map(shift => (
@@ -527,13 +562,13 @@ function MonthlySalaryReport() {
                 {shift.shiftName} ({shift.shiftType})
               </option>
             ))}
-          </select>
+          </motion.select>
           <motion.button
             variants={buttonVariants}
             whileHover="hover"
             whileTap="tap"
             onClick={handleSearch}
-            className="w-full md:w-auto bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md"
+            className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
           >
             بحث
           </motion.button>
@@ -542,151 +577,183 @@ function MonthlySalaryReport() {
             whileHover="hover"
             whileTap="tap"
             onClick={handleShowAll}
-            className="w-full md:w-auto bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md"
+            className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
           >
             عرض الكل
           </motion.button>
-          <motion.button
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={exportToExcel}
-            className="w-full md:w-auto bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md flex items-center justify-center"
-          >
-            <Download className="h-4 w-4 ml-2" /> تصدير إلى Excel
-          </motion.button>
-          <motion.button
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-            onClick={exportToPDF}
-            className="w-full md:w-auto bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md flex items-center justify-center"
-          >
-            <Download className="h-4 w-4 ml-2" /> تصدير إلى PDF
-          </motion.button>
+          {userRole === 'admin' && (
+            <>
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={exportToExcel}
+                className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md flex items-center justify-center"
+              >
+                <Download className="h-4 w-4 ml-2" /> تصدير إلى Excel
+              </motion.button>
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={exportToPDF}
+                className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md flex items-center justify-center"
+              >
+                <Download className="h-4 w-4 ml-2" /> تصدير إلى PDF
+              </motion.button>
+            </>
+          )}
         </div>
         {loading && (
-          <div className="flex justify-center mb-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="flex justify-center mb-6"
+          >
             <CustomLoadingSpinner />
-          </div>
+          </motion.div>
         )}
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-lg">
-          <table ref={tableRef} className="min-w-full divide-y divide-gray-100 bg-white">
-            <thead className="bg-purple-50">
+        <motion.div
+          variants={tableVariants}
+          initial="hidden"
+          animate="visible"
+          className="overflow-x-auto rounded-lg border border-gray-200 shadow-md"
+        >
+          <table ref={tableRef} className="min-w-full divide-y divide-gray-200 bg-white">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">كود الموظف</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">اسم الموظف</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">الراتب الأساسي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">الراتب الإجمالي بالبدلات</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">التأمين الطبي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">التأمين الاجتماعي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">بدل الوجبة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">خصومات بدل الوجبة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">بدل الوجبة المتبقي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">نوع الشيفت</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي أيام الحضور</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الإجازات الأسبوعية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي بدل الإجازة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الغياب</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الساعات المخصومة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الإجازات السنوية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي خصم الإجازة المرضية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">رصيد الإجازة السنوية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الإجازات الرسمية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الأيام المخصومة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الساعات الإضافية</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">منحة مناسبة</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي المخالفات</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">خصم قسط المخالفات</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي السلف</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">خصم قسط السلف</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي قيمة الخصومات</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">إجمالي الإضافي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">الصافي</th>
-                <th className="py-4 px-6 text-right text-sm font-bold text-purple-600 uppercase tracking-wider">تعديل</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">كود الموظف</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">اسم الموظف</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">الراتب الأساسي</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">الراتب الإجمالي بالبدلات</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">التأمين الطبي</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">التأمين الاجتماعي</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">بدل الوجبة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">خصومات بدل الوجبة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">بدل الوجبة المتبقي</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">نوع الشيفت</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي أيام الحضور</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الإجازات الأسبوعية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي بدل الإجازة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الغياب</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الساعات المخصومة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الإجازات السنوية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي خصم الإجازة المرضية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">رصيد الإجازة السنوية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الإجازات الرسمية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الأيام المخصومة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الساعات الإضافية</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">منحة مناسبة</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي المخالفات</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">خصم قسط المخالفات</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي السلف</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">خصم قسط السلف</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي قيمة الخصومات</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">إجمالي الإضافي</th>
+                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">الصافي</th>
+                {userRole === 'admin' && (
+                  <th className="py-3 px-4 text-right text-sm font-semibold text-gray-800">تعديل</th>
+                )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {data.map((row, index) => (
-                <tr key={index} className="hover:bg-purple-50/50 transition duration-300 ease-in-out">
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.employeeCode}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.employeeName}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.basicSalary)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalSalaryWithAllowances)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.medicalInsurance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.socialInsurance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.mealDeduction)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.remainingMealAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{row.shiftName}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAttendanceDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalWeeklyOffDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalLeaveAllowance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAbsentDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedHours)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalAnnualLeaveDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalSickLeaveDeduction)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.annualLeaveBalance)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOfficialLeaveDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedDays)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeHours)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.occasionBonus)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalViolations)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.violationDeduction)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalLoans)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.loanDeduction)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalDeductions)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeAmount)}</td>
-                  <td className="py-4 px-6 text-right text-sm text-gray-700">{formatNumber(row.finalSalary)}</td>
-                  <td className="py-4 px-6 text-right">
-                    <motion.button
-                      variants={buttonVariants}
-                      whileHover="hover"
-                      whileTap="tap"
-                      onClick={() => openEditModal(row)}
-                      className="bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 transition duration-300 shadow-md"
-                    >
-                      <Pencil className="h-5 w-5" />
-                    </motion.button>
-                  </td>
-                </tr>
+                <motion.tr
+                  key={index}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className="hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{row.employeeCode}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{row.employeeName}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.basicSalary)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalSalaryWithAllowances)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.medicalInsurance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.socialInsurance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.mealAllowance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.mealDeduction)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.remainingMealAllowance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{row.shiftName}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalAttendanceDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalWeeklyOffDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalLeaveAllowance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalAbsentDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedHours)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalAnnualLeaveDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalSickLeaveDeduction)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.annualLeaveBalance)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalOfficialLeaveDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalDeductedDays)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeHours)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.occasionBonus)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalViolations)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.violationDeduction)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalLoans)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.loanDeduction)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalDeductions)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.totalOvertimeAmount)}</td>
+                  <td className="py-3 px-4 text-right text-sm text-gray-700">{formatNumber(row.finalSalary)}</td>
+                  {userRole === 'admin' && (
+                    <td className="py-3 px-4 text-right">
+                      <motion.button
+                        variants={buttonVariants}
+                        whileHover={{ scale: 1.2, rotate: 15, transition: { duration: 0.3, ease: 'easeOut' } }}
+                        whileTap="tap"
+                        onClick={() => openEditModal(row)}
+                        className="bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors duration-200 shadow-md"
+                      >
+                        <Pencil className="h-5 w-5" />
+                      </motion.button>
+                    </td>
+                  )}
+                </motion.tr>
               ))}
-              <tr className="bg-purple-50 font-bold">
-                <td className="py-4 px-6 text-right text-sm text-gray-800" colSpan="2">إجمالي</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.basicSalary)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalSalaryWithAllowances)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.medicalInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.socialInsurance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.mealDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.remainingMealAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAttendanceDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalWeeklyOffDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalLeaveAllowance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAbsentDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalAnnualLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalSickLeaveDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.annualLeaveBalance)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOfficialLeaveDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedDays)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeHours)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.occasionBonus)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalViolations)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.violationDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalLoans)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.loanDeduction)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductions)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeAmount)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800">{formatNumber(totals.finalSalary)}</td>
-                <td className="py-4 px-6 text-right text-sm text-gray-800"></td>
-              </tr>
+              <motion.tr
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className="bg-gray-100 font-semibold"
+              >
+                <td className="py-3 px-4 text-right text-sm text-gray-800" colSpan="2">إجمالي</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.basicSalary)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalSalaryWithAllowances)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.medicalInsurance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.socialInsurance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.mealAllowance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.mealDeduction)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.remainingMealAllowance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalAttendanceDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalWeeklyOffDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalLeaveAllowance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalAbsentDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedHours)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalAnnualLeaveDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalSickLeaveDeduction)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.annualLeaveBalance)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalOfficialLeaveDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductedDays)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeHours)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.occasionBonus)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalViolations)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.violationDeduction)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalLoans)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.loanDeduction)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalDeductions)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.totalOvertimeAmount)}</td>
+                <td className="py-3 px-4 text-right text-sm text-gray-800">{formatNumber(totals.finalSalary)}</td>
+                {userRole === 'admin' && (
+                  <td className="py-3 px-4 text-right text-sm text-gray-800"></td>
+                )}
+              </motion.tr>
             </tbody>
           </table>
-        </div>
+        </motion.div>
         <AnimatePresence>
-          {editModalOpen && (
+          {editModalOpen && userRole === 'admin' && (
             <motion.div
               variants={modalVariants}
               initial="hidden"
@@ -694,61 +761,76 @@ function MonthlySalaryReport() {
               exit="exit"
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
             >
-              <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md">
-                <h3 className="text-xl font-bold text-purple-600 mb-6 text-right">تعديل بيانات الراتب</h3>
+              <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-right">تعديل بيانات الراتب</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">إجمالي المخالفات</label>
-                    <input
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="number"
                       name="totalViolations"
                       value={editValues.totalViolations || ''}
                       onChange={handleEditChange}
-                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
                       min="0"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">خصم قسط المخالفات</label>
-                    <input
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="number"
                       name="violationDeduction"
                       value={editValues.violationDeduction || ''}
                       onChange={handleEditChange}
-                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
                       min="0"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">إجمالي السلف</label>
-                    <input
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="number"
                       name="totalLoans"
                       value={editValues.totalLoans || ''}
                       onChange={handleEditChange}
-                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
                       min="0"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">خصم قسط السلف</label>
-                    <input
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="number"
                       name="loanDeduction"
                       value={editValues.loanDeduction || ''}
                       onChange={handleEditChange}
-                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
                       min="0"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-right">منحة مناسبة</label>
-                    <input
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="number"
                       name="occasionBonus"
                       value={editValues.occasionBonus || ''}
                       onChange={handleEditChange}
-                      className="mt-1 w-full p-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-right"
+                      className="mt-1 w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-right text-sm"
                       min="0"
                     />
                   </div>
@@ -759,7 +841,7 @@ function MonthlySalaryReport() {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={saveEdit}
-                    className="bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 text-sm font-medium shadow-md"
+                    className="bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   >
                     حفظ
                   </motion.button>
@@ -768,7 +850,7 @@ function MonthlySalaryReport() {
                     whileHover="hover"
                     whileTap="tap"
                     onClick={() => setEditModalOpen(false)}
-                    className="bg-gray-600 text-white p-3 rounded-2xl hover:bg-gray-700 transition duration-300 text-sm font-medium shadow-md"
+                    className="bg-gray-500 text-white p-3 rounded-lg hover:bg-gray-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   >
                     إلغاء
                   </motion.button>
@@ -777,7 +859,22 @@ function MonthlySalaryReport() {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+        <AnimatePresence>
+          {showSuccessAnimation && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+            >
+              <div className="bg-white p-4 rounded-full shadow-md">
+                <CustomCheckIcon />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

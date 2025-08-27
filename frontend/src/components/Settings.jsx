@@ -1,45 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 const CustomCheckIcon = () => (
   <motion.div
     className="relative h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeInOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 12 } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-600"
+      className="h-full w-full text-purple-500"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={3}
-      initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.7, ease: 'easeInOut' } }}
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
-    <motion.div
-      className="absolute inset-0 rounded-full bg-purple-100 opacity-40"
-      initial={{ scale: 0 }}
-      animate={{ scale: 1.8, opacity: 0, transition: { duration: 1, ease: 'easeOut' } }}
-    />
   </motion.div>
 );
 
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeInOut' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3, ease: 'easeOut' } }}
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
+    exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.div
-      className="h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-600 border-t-transparent rounded-full"
+      className="h-8 w-8 border-3 border-purple-500 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="mr-2 sm:mr-3 text-purple-600 text-xs sm:text-sm font-medium">جارٍ التحميل...</span>
+    <span className="mr-2 text-purple-500 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
@@ -72,7 +68,7 @@ function Settings() {
     3: 'الأربعاء',
     4: 'الخميس',
     5: 'الجمعة',
-    6: 'السبت'
+    6: 'السبت',
   };
 
   const reverseDaysMap = {
@@ -82,50 +78,46 @@ function Settings() {
     'الأربعاء': 3,
     'الخميس': 4,
     'الجمعة': 5,
-    'السبت': 6
+    'السبت': 6,
   };
 
-  const fetchShifts = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('يرجى تسجيل الدخول أولاً لجلب الشيفتات');
-      return;
-    }
-
+  const fetchShifts = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/shift`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.message || `فشل في جلب الشيفتات: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = response.data;
       if (!Array.isArray(data)) {
-        console.error('البيانات المستلمة ليست مصفوفة:', data);
         setError('البيانات المستلمة غير صالحة. تواصل مع المسؤول.');
         return;
       }
-      const transformedData = data.map(shift => ({
+      const transformedData = data.map((shift) => ({
         ...shift,
-        workDays: Array.isArray(shift.workDays) ? shift.workDays.map(num => daysMap[num]).filter(day => day !== undefined) : []
+        workDays: Array.isArray(shift.workDays) ? shift.workDays.map((num) => daysMap[num]).filter((day) => day !== undefined) : [],
       }));
       setShifts(transformedData);
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء جلب الشيفتات. تحقق من الخادم أو التوكن.');
+      if (err.response) {
+        if (err.response.status === 401) {
+          setError('التوكن غير صالح أو انتهت صلاحيته، يرجى تسجيل الدخول مرة أخرى');
+        } else {
+          setError(err.response.data.message || 'حدث خطأ أثناء جلب الشيفتات');
+        }
+      } else {
+        setError('فشل الاتصال بالخادم، تحقق من الاتصال بالإنترنت');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchShifts();
-  }, []);
+  }, [fetchShifts]);
 
-  const calculateBaseHours = () => {
+  const calculateBaseHours = useCallback(() => {
     if ((shiftType === 'morning' || shiftType === 'evening') && startTime && endTime) {
       const [startHours, startMinutes] = startTime.split(':').map(Number);
       let [endHours, endMinutes] = endTime.split(':').map(Number);
@@ -135,9 +127,9 @@ function Settings() {
       return ((end - start) / (1000 * 60 * 60)).toFixed(2);
     }
     return baseHours;
-  };
+  }, [shiftType, startTime, endTime, baseHours]);
 
-  const calculateOvertimeEndTime = () => {
+  const calculateOvertimeEndTime = useCallback(() => {
     if ((shiftType === 'morning' || shiftType === 'evening') && endTime && maxOvertimeHours) {
       const [hours, minutes] = endTime.split(':').map(Number);
       const endDate = new Date(2025, 0, 1, hours, minutes);
@@ -147,7 +139,7 @@ function Settings() {
       return `${overtimeHours}:${overtimeMinutes}`;
     }
     return '';
-  };
+  }, [shiftType, endTime, maxOvertimeHours]);
 
   const getShiftIcon = (type) => {
     if (type === 'morning') {
@@ -190,7 +182,7 @@ function Settings() {
     return null;
   };
 
-  const handleShiftChange = (e) => {
+  const handleShiftChange = useCallback((e) => {
     const shiftId = e.target.value;
     if (!shiftId) {
       setSelectedShift(null);
@@ -210,7 +202,6 @@ function Settings() {
       setFridayOvertimeMultiplier('1');
       return;
     }
-
     const shift = shifts.find((s) => s._id === shiftId);
     if (shift) {
       setSelectedShift(shift);
@@ -229,195 +220,133 @@ function Settings() {
       setFridayOvertimeBasis(shift.fridayOvertimeBasis || 'basicSalary');
       setFridayOvertimeMultiplier(shift.fridayOvertimeMultiplier || '1');
     }
-  };
+  }, [shifts]);
 
-  const handleWorkDaysChange = (e) => {
+  const handleWorkDaysChange = useCallback((e) => {
     const { value, checked } = e.target;
-    let updatedWorkDays;
-    if (checked) {
-      updatedWorkDays = [...workDays, value];
-    } else {
-      updatedWorkDays = workDays.filter((day) => day !== value);
-    }
-    setWorkDays(updatedWorkDays);
-  };
+    setWorkDays((prev) =>
+      checked ? [...prev, value] : prev.filter((day) => day !== value)
+    );
+  }, []);
 
-  const addDeduction = () => {
-    if (shiftType === 'morning' || shiftType === 'evening') {
-      setDeductions([...deductions, { start: '', end: '', type: '' }]);
-    } else {
-      setDeductions([...deductions, { duration: '', deductionAmount: '', type: 'minutes' }]);
-    }
-  };
+  const addDeduction = useCallback(() => {
+    setDeductions((prev) => [
+      ...prev,
+      shiftType === 'morning' || shiftType === 'evening'
+        ? { start: '', end: '', type: '' }
+        : { duration: '', deductionAmount: '', type: 'minutes' },
+    ]);
+  }, [shiftType]);
 
-  const updateDeduction = (index, field, value) => {
-    const newDeductions = [...deductions];
-    newDeductions[index][field] = value;
-    if (shiftType === '24/24' && field === 'duration') {
-      newDeductions[index].deductionAmount = value;
-    }
-    setDeductions(newDeductions);
-  };
+  const updateDeduction = useCallback((index, field, value) => {
+    setDeductions((prev) => {
+      const newDeductions = [...prev];
+      newDeductions[index][field] = value;
+      if (shiftType === '24/24' && field === 'duration') {
+        newDeductions[index].deductionAmount = value;
+      }
+      return newDeductions;
+    });
+  }, [shiftType]);
 
-  const removeDeduction = (index) => {
-    setDeductions(deductions.filter((_, i) => i !== index));
-  };
+  const removeDeduction = useCallback((index) => {
+    setDeductions((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!selectedShift) {
-      setError('يرجى اختيار شيفت');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setSuccessMessage('');
-    try {
-      if (Number(baseHours) <= 0) {
-        setError('الساعات الأساسية يجب أن تكون قيمة إيجابية');
-        setLoading(false);
+  const handleUpdate = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!selectedShift) {
+        setError('يرجى اختيار شيفت');
         return;
       }
-      if (shiftType === 'morning' || shiftType === 'evening') {
-        if (!startTime || !endTime) {
-          setError('يجب إدخال وقت البداية والنهاية للشيفت الصباحي أو المسائي');
-          setLoading(false);
-          return;
-        }
-        const [startHours, startMinutes] = startTime.split(':').map(Number);
-        let [endHours, endMinutes] = endTime.split(':').map(Number);
-        const start = new Date(2025, 0, 1, startHours, startMinutes);
-        let end = new Date(2025, 0, 1, endHours, endMinutes);
-        if (shiftType === 'evening' && end <= start) {
-          end.setDate(end.getDate() + 1);
-        }
-        const calculatedBaseHours = (end - start) / (1000 * 60 * 60);
-        if (Math.abs(calculatedBaseHours - Number(baseHours)) > 0.1) {
-          setError('الساعات الأساسية يجب أن تتطابق مع الفرق بين وقت البداية والنهاية (بحد أقصى تفاوت 0.1 ساعة)');
-          setLoading(false);
-          return;
-        }
-        for (const deduction of deductions) {
-          if (!deduction.start || !deduction.end || !deduction.type) {
-            setError('جميع حقول الخصم مطلوبة');
-            setLoading(false);
-            return;
-          }
-          const [dedStartHours, dedStartMinutes] = deduction.start.split(':').map(Number);
-          let [dedEndHours, dedEndMinutes] = deduction.end.split(':').map(Number);
-          const dedStart = new Date(2025, 0, 1, dedStartHours, dedStartMinutes);
-          let dedEnd = new Date(2025, 0, 1, dedEndHours, dedEndMinutes);
-          if (shiftType === 'evening' && dedEnd <= dedStart) {
-            dedEnd.setDate(dedEnd.getDate() + 1);
-          }
-          if (dedEnd <= dedStart) {
-            setError('وقت نهاية الخصم يجب أن يكون بعد وقت البداية');
-            setLoading(false);
-            return;
-          }
-        }
-      } else {
-        if (Number(maxOvertimeHours) <= 0) {
-          setError('الساعات الإضافية يجب أن تكون قيمة إيجابية لشيفت 24/24');
-          setLoading(false);
-          return;
-        }
-        for (const deduction of deductions) {
-          if (!deduction.duration || !deduction.deductionAmount || !deduction.type) {
-            setError('جميع حقول الخصم مطلوبة');
-            setLoading(false);
-            return;
-          }
-          if (Number(deduction.duration) <= 0 || Number(deduction.deductionAmount) <= 0) {
-            setError('مدة الخصم ومقدار الخصم يجب أن يكونا قيمتين إيجابيتين');
-            setLoading(false);
-            return;
-          }
-          if (Number(deduction.duration) > Number(baseHours) * 60) {
-            setError('مدة الخصم يجب ألا تتجاوز الساعات الأساسية');
-            setLoading(false);
-            return;
-          }
-        }
-      }
-      const numericWorkDays = workDays.map(name => reverseDaysMap[name]).filter(day => day !== undefined).sort((a, b) => a - b);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift/update/${selectedShift._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          shiftType,
-          shiftName,
-          baseHours,
-          startTime: shiftType === 'morning' || shiftType === 'evening' ? startTime : null,
-          endTime: shiftType === 'morning' || shiftType === 'evening' ? endTime : null,
-          maxOvertimeHours: maxOvertimeHours || 0,
-          workDays: numericWorkDays,
-          gracePeriod,
-          deductions,
-          sickLeaveDeduction,
-          isCrossDay: shiftType === 'evening',
-          overtimeBasis,
-          overtimeMultiplier: Number(overtimeMultiplier),
-          fridayOvertimeBasis,
-          fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier)
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setShowSuccessAnimation(true);
-        setSuccessMessage('تم تعديل الشيفت بنجاح');
-        setTimeout(() => {
-          setShowSuccessAnimation(false);
-          fetchShifts();
-          setSelectedShift(null);
-          setShiftType('morning');
-          setShiftName('');
-          setBaseHours('');
-          setStartTime('');
-          setEndTime('');
-          setMaxOvertimeHours('');
-          setWorkDays([]);
-          setGracePeriod('');
-          setDeductions([]);
-          setSickLeaveDeduction('');
-          setOvertimeBasis('basicSalary');
-          setOvertimeMultiplier('1');
-          setFridayOvertimeBasis('basicSalary');
-          setFridayOvertimeMultiplier('1');
-        }, 1500);
-      } else {
-        setError(data.message || 'حدث خطأ أثناء تعديل الشيفت');
-      }
-    } catch (err) {
-      setError('حدث خطأ، حاول مرة أخرى');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selectedShift) {
-      setError('يرجى اختيار شيفت');
-      return;
-    }
-    if (window.confirm('هل أنت متأكد من حذف الشيفت؟')) {
       setLoading(true);
       setError('');
       setSuccessMessage('');
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/shift/delete/${selectedShift._id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+        if (Number(baseHours) <= 0) {
+          setError('الساعات الأساسية يجب أن تكون قيمة إيجابية');
+          return;
+        }
+        if (shiftType === 'morning' || shiftType === 'evening') {
+          if (!startTime || !endTime) {
+            setError('يجب إدخال وقت البداية والنهاية للشيفت الصباحي أو المسائي');
+            return;
+          }
+          const [startHours, startMinutes] = startTime.split(':').map(Number);
+          let [endHours, endMinutes] = endTime.split(':').map(Number);
+          const start = new Date(2025, 0, 1, startHours, startMinutes);
+          let end = new Date(2025, 0, 1, endHours, endMinutes);
+          if (shiftType === 'evening' && end <= start) {
+            end.setDate(end.getDate() + 1);
+          }
+          const calculatedBaseHours = (end - start) / (1000 * 60 * 60);
+          if (Math.abs(calculatedBaseHours - Number(baseHours)) > 0.1) {
+            setError('الساعات الأساسية يجب أن تتطابق مع الفرق بين وقت البداية والنهاية');
+            return;
+          }
+          for (const deduction of deductions) {
+            if (!deduction.start || !deduction.end || !deduction.type) {
+              setError('جميع حقول الخصم مطلوبة');
+              return;
+            }
+            const [dedStartHours, dedStartMinutes] = deduction.start.split(':').map(Number);
+            let [dedEndHours, dedEndMinutes] = deduction.end.split(':').map(Number);
+            const dedStart = new Date(2025, 0, 1, dedStartHours, dedStartMinutes);
+            let dedEnd = new Date(2025, 0, 1, dedEndHours, dedEndMinutes);
+            if (shiftType === 'evening' && dedEnd <= dedStart) {
+              dedEnd.setDate(dedEnd.getDate() + 1);
+            }
+            if (dedEnd <= dedStart) {
+              setError('وقت نهاية الخصم يجب أن يكون بعد وقت البداية');
+              return;
+            }
+          }
+        } else {
+          if (Number(maxOvertimeHours) <= 0) {
+            setError('الساعات الإضافية يجب أن تكون قيمة إيجابية لشيفت 24/24');
+            return;
+          }
+          for (const deduction of deductions) {
+            if (!deduction.duration || !deduction.deductionAmount || !deduction.type) {
+              setError('جميع حقول الخصم مطلوبة');
+              return;
+            }
+            if (Number(deduction.duration) <= 0 || Number(deduction.deductionAmount) <= 0) {
+              setError('مدة الخصم ومقدار الخصم يجب أن يكونا قيمتين إيجابيتين');
+              return;
+            }
+            if (Number(deduction.duration) > Number(baseHours) * 60) {
+              setError('مدة الخصم يجب ألا تتجاوز الساعات الأساسية');
+              return;
+            }
+          }
+        }
+        const numericWorkDays = workDays.map((name) => reverseDaysMap[name]).filter((day) => day !== undefined).sort((a, b) => a - b);
+        const response = await axios.put(
+          `${process.env.REACT_APP_API_URL}/api/shift/update/${selectedShift._id}`,
+          {
+            shiftType,
+            shiftName,
+            baseHours,
+            startTime: shiftType === 'morning' || shiftType === 'evening' ? startTime : null,
+            endTime: shiftType === 'morning' || shiftType === 'evening' ? endTime : null,
+            maxOvertimeHours: maxOvertimeHours || 0,
+            workDays: numericWorkDays,
+            gracePeriod,
+            deductions,
+            sickLeaveDeduction,
+            isCrossDay: shiftType === 'evening',
+            overtimeBasis,
+            overtimeMultiplier: Number(overtimeMultiplier),
+            fridayOvertimeBasis,
+            fridayOvertimeMultiplier: Number(fridayOvertimeMultiplier),
           },
-        });
-        const data = await response.json();
-        if (data.success) {
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        );
+        if (response.data.success) {
           setShowSuccessAnimation(true);
-          setSuccessMessage('تم حذف الشيفت بنجاح');
+          setSuccessMessage('تم تعديل الشيفت بنجاح');
           setTimeout(() => {
             setShowSuccessAnimation(false);
             fetchShifts();
@@ -436,107 +365,191 @@ function Settings() {
             setOvertimeMultiplier('1');
             setFridayOvertimeBasis('basicSalary');
             setFridayOvertimeMultiplier('1');
-          }, 1500);
+          }, 1000);
         } else {
-          setError(data.message || 'حدث خطأ أثناء حذف الشيفت');
+          setError(response.data.message || 'حدث خطأ أثناء تعديل الشيفت');
         }
       } catch (err) {
-        setError('حدث خطأ، حاول مرة أخرى');
+        if (err.response) {
+          if (err.response.status === 401) {
+            setError('التوكن غير صالح أو انتهت صلاحيته، يرجى تسجيل الدخول مرة أخرى');
+          } else {
+            setError(err.response.data.message || 'حدث خطأ أثناء تعديل الشيفت');
+          }
+        } else {
+          setError('فشل الاتصال بالخادم، تحقق من الاتصال بالإنترنت');
+        }
       } finally {
         setLoading(false);
       }
+    },
+    [
+      selectedShift,
+      shiftType,
+      shiftName,
+      baseHours,
+      startTime,
+      endTime,
+      maxOvertimeHours,
+      workDays,
+      gracePeriod,
+      deductions,
+      sickLeaveDeduction,
+      overtimeBasis,
+      overtimeMultiplier,
+      fridayOvertimeBasis,
+      fridayOvertimeMultiplier,
+      fetchShifts,
+    ]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!selectedShift) {
+      setError('يرجى اختيار شيفت');
+      return;
     }
-  };
+    if (!window.confirm('هل أنت متأكد من حذف الشيفت؟')) return;
+    setLoading(true);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await axios.delete(`${process.env.REACT_APP_API_URL}/api/shift/delete/${selectedShift._id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      if (response.data.success) {
+        setShowSuccessAnimation(true);
+        setSuccessMessage('تم حذف الشيفت بنجاح');
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+          fetchShifts();
+          setSelectedShift(null);
+          setShiftType('morning');
+          setShiftName('');
+          setBaseHours('');
+          setStartTime('');
+          setEndTime('');
+          setMaxOvertimeHours('');
+          setWorkDays([]);
+          setGracePeriod('');
+          setDeductions([]);
+          setSickLeaveDeduction('');
+          setOvertimeBasis('basicSalary');
+          setOvertimeMultiplier('1');
+          setFridayOvertimeBasis('basicSalary');
+          setFridayOvertimeMultiplier('1');
+        }, 1000);
+      } else {
+        setError(response.data.message || 'حدث خطأ أثناء حذف الشيفت');
+      }
+    } catch (err) {
+      if (err.response) {
+        if (err.response.status === 401) {
+          setError('التوكن غير صالح أو انتهت صلاحيته، يرجى تسجيل الدخول مرة أخرى');
+        } else {
+          setError(err.response.data.message || 'حدث خطأ أثناء حذف الشيفت');
+        }
+      } else {
+        setError('فشل الاتصال بالخادم، تحقق من الاتصال بالإنترنت');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedShift, fetchShifts]);
 
   const formVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 6px 25px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeInOut' } },
-    tap: { scale: 0.95, backgroundColor: '#A78BFA', transition: { duration: 0.2, ease: 'easeInOut' } },
+    hover: { scale: 1.05, boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', transition: { duration: 0.2, ease: 'easeOut' } },
+    tap: { scale: 0.95, transition: { duration: 0.2, ease: 'easeOut' } },
+  };
+
+  const inputVariants = {
+    hover: { scale: 1.02, borderColor: '#8B5CF6', transition: { duration: 0.2, ease: 'easeOut' } },
+    focus: { scale: 1.02, borderColor: '#8B5CF6', boxShadow: '0 0 0 2px rgba(139, 92, 246, 0.3)', transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-4 sm:p-6 font-noto-sans-arabic relative overflow-hidden dir=rtl">
-      <motion.div
-        className="absolute top-[-10%] left-[-10%] h-64 w-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-50"
-        animate={{ scale: [1, 1.2, 1], x: [-20, 20, -20], y: [-20, 20, -20] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute bottom-[-15%] right-[-10%] h-80 w-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-2xl opacity-40"
-        animate={{ scale: [1, 1.3, 1], x: [20, -20, 20], y: [20, -20, 20] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute top-1/2 left-1/2 h-96 w-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-        animate={{ scale: [1, 1.15, 1], rotate: [0, 45, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        variants={formVariants}
-        initial="hidden"
-        animate="visible"
-        className="container mx-auto relative z-10 max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl"
-      >
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-purple-600 mb-4 sm:mb-6 text-right tracking-wide drop-shadow-sm">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8 font-noto-sans-arabic relative dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+      <div className="container mx-auto max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-7xl">
+        <motion.h2
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 text-right"
+        >
           إعدادات الشيفتات
-        </h2>
+        </motion.h2>
         <AnimatePresence>
           {error && (
-            <motion.div
+            <motion.p
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-3 sm:mb-4 text-xs sm:text-sm text-right shadow-sm"
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="text-red-600 bg-red-50 p-3 rounded-lg mb-6 text-right text-sm"
             >
               {error}
-            </motion.div>
+            </motion.p>
           )}
           {successMessage && !loading && (
-            <motion.div
+            <motion.p
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-purple-50 text-purple-600 p-2 sm:p-3 rounded-xl mb-3 sm:mb-4 text-xs sm:text-sm text-right shadow-sm"
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="text-green-600 bg-green-50 p-3 rounded-lg mb-6 text-right text-sm"
             >
               {successMessage}
-            </motion.div>
+            </motion.p>
           )}
         </AnimatePresence>
         {loading && (
-          <div className="flex justify-center mb-4 sm:mb-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="flex justify-center mb-6"
+          >
             <CustomLoadingSpinner />
-          </div>
+          </motion.div>
         )}
-        <div className="bg-white p-3 sm:p-4 md:p-5 rounded-2xl shadow-lg border border-purple-100 backdrop-blur-sm bg-opacity-90">
-          <div className="mb-4 sm:mb-6">
-            <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">اختر الشيفت</label>
-            <div className="flex items-center space-x-2 sm:space-x-4 space-x-reverse">
-              <select
-                onChange={handleShiftChange}
-                className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
-              >
-                <option value="">اختر الشيفت</option>
-                {shifts.map((shift) => (
-                  <option key={shift._id} value={shift._id}>
-                    {shift.shiftName} ({shift.shiftType === 'morning' ? 'صباحي' : shift.shiftType === 'evening' ? 'مسائي' : '24/24'}) {getShiftIcon(shift.shiftType)}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <motion.div
+          variants={formVariants}
+          initial="hidden"
+          animate="visible"
+          className="bg-white p-6 rounded-lg shadow-md border border-gray-200"
+        >
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-medium mb-2 text-right">اختر الشيفت</label>
+            <motion.select
+              variants={inputVariants}
+              whileHover="hover"
+              whileFocus="focus"
+              onChange={handleShiftChange}
+              className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
+            >
+              <option value="">اختر الشيفت</option>
+              {shifts.map((shift) => (
+                <option key={shift._id} value={shift._id}>
+                  {shift.shiftName} ({shift.shiftType === 'morning' ? 'صباحي' : shift.shiftType === 'evening' ? 'مسائي' : '24/24'}) {getShiftIcon(shift.shiftType)}
+                </option>
+              ))}
+            </motion.select>
           </div>
           {selectedShift && (
-            <form onSubmit={handleUpdate} className="p-3 sm:p-4 md:p-5 rounded-2xl">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <form onSubmit={handleUpdate} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">نوع الشيفت</label>
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">نوع الشيفت</label>
                   <div className="flex items-center">
-                    <select
+                    <motion.select
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       value={shiftType}
                       onChange={(e) => {
                         setShiftType(e.target.value);
@@ -550,33 +563,39 @@ function Settings() {
                         setFridayOvertimeBasis('basicSalary');
                         setFridayOvertimeMultiplier('1');
                       }}
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                       disabled
                     >
                       <option value="morning">صباحي</option>
                       <option value="evening">مسائي</option>
                       <option value="24/24">24/24</option>
-                    </select>
+                    </motion.select>
                     {getShiftIcon(shiftType)}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">اسم الشيفت</label>
-                  <input
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">اسم الشيفت</label>
+                  <motion.input
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     type="text"
                     value={shiftName}
                     onChange={(e) => setShiftName(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">الساعات الأساسية</label>
-                  <input
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">الساعات الأساسية</label>
+                  <motion.input
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     type="number"
                     value={baseHours}
                     onChange={(e) => setBaseHours(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     readOnly={shiftType === 'morning' || shiftType === 'evening'}
                     placeholder={shiftType === 'morning' || shiftType === 'evening' ? 'يتم الحساب تلقائيًا' : ''}
                     required
@@ -585,54 +604,66 @@ function Settings() {
                 {(shiftType === 'morning' || shiftType === 'evening') && (
                   <>
                     <div>
-                      <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">وقت بداية الشيفت</label>
-                      <input
+                      <label className="block text-gray-700 text-sm font-medium mb-2 text-right">وقت بداية الشيفت</label>
+                      <motion.input
+                        variants={inputVariants}
+                        whileHover="hover"
+                        whileFocus="focus"
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                        className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">وقت نهاية الشيفت</label>
-                      <input
+                      <label className="block text-gray-700 text-sm font-medium mb-2 text-right">وقت نهاية الشيفت</label>
+                      <motion.input
+                        variants={inputVariants}
+                        whileHover="hover"
+                        whileFocus="focus"
                         type="time"
                         value={endTime}
                         onChange={(e) => {
                           setEndTime(e.target.value);
                           setBaseHours(calculateBaseHours());
                         }}
-                        className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                        className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                         required
                       />
                     </div>
                   </>
                 )}
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">الحد الأقصى للساعات الإضافية</label>
-                  <input
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">الحد الأقصى للساعات الإضافية</label>
+                  <motion.input
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     type="number"
                     value={maxOvertimeHours}
                     onChange={(e) => setMaxOvertimeHours(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     placeholder={shiftType === '24/24' ? 'مطلوب' : 'اختياري'}
                     required={shiftType === '24/24'}
                   />
                 </div>
                 {(shiftType === 'morning' || shiftType === 'evening') && maxOvertimeHours && (
                   <div>
-                    <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">وقت نهاية الشيفت الإضافي</label>
-                    <input
+                    <label className="block text-gray-700 text-sm font-medium mb-2 text-right">وقت نهاية الشيفت الإضافي</label>
+                    <motion.input
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       type="text"
                       value={calculateOvertimeEndTime()}
                       readOnly
-                      className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl bg-gray-100 text-xs sm:text-sm"
+                      className="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-sm"
                     />
                   </div>
                 )}
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أيام العمل</label>
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">أيام العمل</label>
                   <div className="grid grid-cols-2 gap-4">
                     {Object.keys(reverseDaysMap).map((day) => (
                       <label key={day} className="flex items-center space-x-2 space-x-reverse">
@@ -649,134 +680,167 @@ function Settings() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">فترة السماح (دقائق)</label>
-                  <input
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">فترة السماح (دقائق)</label>
+                  <motion.input
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     type="number"
                     value={gracePeriod}
                     onChange={(e) => setGracePeriod(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">خصم الإجازة المرضية</label>
-                  <select
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">خصم الإجازة المرضية</label>
+                  <motion.select
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     value={sickLeaveDeduction}
                     onChange={(e) => setSickLeaveDeduction(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                   >
                     <option value="">اختر</option>
                     <option value="none">بدون خصم</option>
                     <option value="quarter">ربع يوم</option>
                     <option value="half">نص يوم</option>
                     <option value="full">يوم كامل</option>
-                  </select>
+                  </motion.select>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أساس حساب الساعات الإضافية</label>
-                  <select
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">أساس حساب الساعات الإضافية</label>
+                  <motion.select
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     value={overtimeBasis}
                     onChange={(e) => setOvertimeBasis(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   >
                     <option value="basicSalary">الراتب الأساسي</option>
                     <option value="totalSalary">الراتب الإجمالي بالبدلات</option>
-                  </select>
+                  </motion.select>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">معدل الساعات الإضافية</label>
-                  <select
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">معدل الساعات الإضافية</label>
+                  <motion.select
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     value={overtimeMultiplier}
                     onChange={(e) => setOvertimeMultiplier(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   >
                     <option value="1">ساعة</option>
                     <option value="1.5">ساعة ونص</option>
                     <option value="2">ساعتين</option>
-                  </select>
+                  </motion.select>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">أساس حساب ساعات الجمعة الإضافية</label>
-                  <select
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">أساس حساب ساعات الجمعة الإضافية</label>
+                  <motion.select
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     value={fridayOvertimeBasis}
                     onChange={(e) => setFridayOvertimeBasis(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   >
                     <option value="basicSalary">الراتب الأساسي</option>
                     <option value="totalSalary">الراتب الإجمالي بالبدلات</option>
-                  </select>
+                  </motion.select>
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">معدل ساعات الجمعة الإضافية</label>
-                  <select
+                  <label className="block text-gray-700 text-sm font-medium mb-2 text-right">معدل ساعات الجمعة الإضافية</label>
+                  <motion.select
+                    variants={inputVariants}
+                    whileHover="hover"
+                    whileFocus="focus"
                     value={fridayOvertimeMultiplier}
                     onChange={(e) => setFridayOvertimeMultiplier(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                     required
                   >
                     <option value="1">ساعة</option>
                     <option value="1.5">ساعة ونص</option>
                     <option value="2">ساعتين</option>
-                  </select>
+                  </motion.select>
                 </div>
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2 text-right">
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-medium mb-2 text-right">
                   {shiftType === '24/24' ? 'خصومات الخروج المبكر' : 'خصومات التأخير'}
                 </label>
-                <p className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-4">
+                <p className="text-gray-500 text-sm mb-4">
                   {shiftType === '24/24'
                     ? 'أدخل مدة النقص ومقدار الخصم بالدقائق (مثال: إذا خرج بعد 8 ساعات، أدخل 960 دقيقة ناقصة و960 دقيقة خصم). اختر نوع الخصم: ربع يوم، نص يوم، يوم كامل، أو بالدقائق.'
                     : 'أدخل وقت بداية ونهاية التأخير (مثال: تأخر من 08:00 إلى 08:30). اختر نوع الخصم: ربع يوم، نص يوم، يوم كامل، أو بالدقائق.'}
                 </p>
                 {deductions.map((deduction, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 sm:space-x-reverse mb-3 sm:mb-4">
+                  <div key={index} className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-3 md:space-x-reverse mb-4">
                     {shiftType === 'morning' || shiftType === 'evening' ? (
                       <>
-                        <input
+                        <motion.input
+                          variants={inputVariants}
+                          whileHover="hover"
+                          whileFocus="focus"
                           type="time"
                           value={deduction.start}
                           onChange={(e) => updateDeduction(index, 'start', e.target.value)}
-                          className="w-full sm:w-1/4 p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                          className="w-full md:w-1/4 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                           placeholder="من (الوقت)"
                           required
                         />
-                        <input
+                        <motion.input
+                          variants={inputVariants}
+                          whileHover="hover"
+                          whileFocus="focus"
                           type="time"
                           value={deduction.end}
                           onChange={(e) => updateDeduction(index, 'end', e.target.value)}
-                          className="w-full sm:w-1/4 p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                          className="w-full md:w-1/4 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                           placeholder="إلى (الوقت)"
                           required
                         />
                       </>
                     ) : (
                       <>
-                        <input
+                        <motion.input
+                          variants={inputVariants}
+                          whileHover="hover"
+                          whileFocus="focus"
                           type="number"
                           value={deduction.duration}
                           onChange={(e) => updateDeduction(index, 'duration', e.target.value)}
-                          className="w-full sm:w-1/4 p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                          className="w-full md:w-1/4 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                           placeholder="مدة النقص (دقائق)"
                           required
                         />
-                        <input
+                        <motion.input
+                          variants={inputVariants}
+                          whileHover="hover"
+                          whileFocus="focus"
                           type="number"
                           value={deduction.deductionAmount}
                           onChange={(e) => updateDeduction(index, 'deductionAmount', e.target.value)}
-                          className="w-full sm:w-1/4 p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                          className="w-full md:w-1/4 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                           placeholder="مقدار الخصم (دقائق)"
                           required
                         />
                       </>
                     )}
-                    <select
+                    <motion.select
+                      variants={inputVariants}
+                      whileHover="hover"
+                      whileFocus="focus"
                       value={deduction.type}
                       onChange={(e) => updateDeduction(index, 'type', e.target.value)}
-                      className="w-full sm:w-1/4 p-2 sm:p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-xs sm:text-sm bg-purple-50"
+                      className="w-full md:w-1/4 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow shadow-sm text-sm bg-white"
                       required
                     >
                       <option value="">اختر نوع الخصم</option>
@@ -784,14 +848,14 @@ function Settings() {
                       <option value="half">نص يوم</option>
                       <option value="full">يوم كامل</option>
                       <option value="minutes">بالدقائق</option>
-                    </select>
+                    </motion.select>
                     <motion.button
                       variants={buttonVariants}
                       whileHover="hover"
                       whileTap="tap"
                       type="button"
                       onClick={() => removeDeduction(index)}
-                      className="w-full sm:w-auto bg-red-600 text-white p-2 sm:p-3 rounded-2xl hover:bg-red-700 transition duration-200 text-xs sm:text-sm font-medium shadow-md"
+                      className="w-full md:w-auto bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-md"
                     >
                       حذف
                     </motion.button>
@@ -803,18 +867,18 @@ function Settings() {
                   whileTap="tap"
                   type="button"
                   onClick={addDeduction}
-                  className="w-full sm:w-auto bg-green-600 text-white p-2 sm:p-3 rounded-2xl hover:bg-green-700 transition duration-200 text-xs sm:text-sm font-medium shadow-md"
+                  className="w-full md:w-auto bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors duration-200 text-sm font-medium shadow-md"
                 >
                   إضافة خصم جديد
                 </motion.button>
               </div>
-              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 sm:space-x-reverse">
+              <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 md:space-x-reverse">
                 <motion.button
                   variants={buttonVariants}
                   whileHover="hover"
                   whileTap="tap"
                   type="submit"
-                  className="w-full sm:w-auto bg-purple-600 text-white p-2 sm:p-3 rounded-2xl hover:bg-purple-700 transition duration-200 text-xs sm:text-sm font-medium shadow-md"
+                  className="w-full md:w-auto bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   disabled={loading}
                 >
                   تعديل الشيفت
@@ -825,7 +889,7 @@ function Settings() {
                   whileTap="tap"
                   type="button"
                   onClick={handleDelete}
-                  className="w-full sm:w-auto bg-red-600 text-white p-2 sm:p-3 rounded-2xl hover:bg-red-700 transition duration-200 text-xs sm:text-sm font-medium shadow-md"
+                  className="w-full md:w-auto bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm font-medium shadow-md"
                   disabled={loading}
                 >
                   حذف الشيفت
@@ -833,20 +897,23 @@ function Settings() {
               </div>
             </form>
           )}
-          <AnimatePresence>
-            {showSuccessAnimation && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.5, ease: 'easeInOut' } }}
-                exit={{ opacity: 0, scale: 0.5, rotate: 90, transition: { duration: 0.3, ease: 'easeInOut' } }}
-                className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
-              >
+        </motion.div>
+        <AnimatePresence>
+          {showSuccessAnimation && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+            >
+              <div className="bg-white p-4 rounded-full shadow-md">
                 <CustomCheckIcon />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

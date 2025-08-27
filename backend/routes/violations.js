@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const Violation = require('../models/Violation');
 const User = require('../models/User');
 
@@ -22,6 +23,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// دالة للتحقق من الدور
+const restrictTo = (roles) => {
+  return (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'التوكن غير موجود، يرجى تسجيل الدخول' });
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (!roles.includes(decoded.role)) {
+        return res.status(403).json({ success: false, message: 'غير مصرح لك بتنفيذ هذا الإجراء' });
+      }
+      req.user = decoded;
+      next();
+    } catch (error) {
+      console.error('خطأ في التحقق من التوكن:', error);
+      return res.status(401).json({ success: false, message: 'التوكن غير صالح' });
+    }
+  };
+};
+
+// دالة لتحديث totalViolations في salaryAdjustments
 // دالة لتحديث totalViolations في salaryAdjustments
 const updateUserViolations = async (employeeCode, violationPrice, date, operation = 'add') => {
   try {
@@ -29,10 +52,16 @@ const updateUserViolations = async (employeeCode, violationPrice, date, operatio
     if (!user) {
       throw new Error('الموظف غير موجود');
     }
+
+    // إنشاء صيغة YYYY-MM بشكل صحيح
     const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    // تهيئة salaryAdjustments إذا لم تكن موجودة
     if (!user.salaryAdjustments) {
       user.salaryAdjustments = new Map();
     }
+
+    // جلب التعديلات الحالية أو إنشاء كائن جديد
     const currentAdjustments = user.salaryAdjustments.get(monthYear) || {
       totalViolations: 0,
       deductionViolationsInstallment: 0,
@@ -40,15 +69,26 @@ const updateUserViolations = async (employeeCode, violationPrice, date, operatio
       deductionAdvancesInstallment: 0,
       occasionBonus: 0,
       mealAllowance: user.mealAllowance || 0,
-      mealDeduction: 0
+      mealDeduction: 0,
+      remainingViolations: 0,
+      remainingAdvances: 0
     };
+
+    // تحديث totalViolations بناءً على العملية
     if (operation === 'add') {
       currentAdjustments.totalViolations = (currentAdjustments.totalViolations || 0) + violationPrice;
+      currentAdjustments.remainingViolations = currentAdjustments.totalViolations - (currentAdjustments.deductionViolationsInstallment || 0);
     } else if (operation === 'subtract') {
       currentAdjustments.totalViolations = Math.max(0, (currentAdjustments.totalViolations || 0) - violationPrice);
+      currentAdjustments.remainingViolations = Math.max(0, currentAdjustments.totalViolations - (currentAdjustments.deductionViolationsInstallment || 0));
     }
+
+    // تحديث salaryAdjustments
     user.salaryAdjustments.set(monthYear, currentAdjustments);
+
+    // تحديث violationTotal في نموذج المستخدم
     user.violationTotal = (user.violationTotal || 0) + (operation === 'add' ? violationPrice : -violationPrice);
+
     await user.save();
     console.log(`تم تحديث totalViolations للموظف ${employeeCode}:`, currentAdjustments.totalViolations);
   } catch (error) {
@@ -56,9 +96,8 @@ const updateUserViolations = async (employeeCode, violationPrice, date, operatio
     throw error;
   }
 };
-
-// جلب جميع المخالفات
-router.get('/', async (req, res) => {
+// جلب جميع المخالفات (لـ admin و gps فقط)
+router.get('/', restrictTo(['admin', 'gps']), async (req, res) => {
   try {
     const violations = await Violation.find();
     console.log('تم جلب المخالفات:', violations.length);
@@ -69,8 +108,21 @@ router.get('/', async (req, res) => {
   }
 });
 
-// جلب بيانات الموظف بناءً على كود الموظف
-router.get('/employee/:employeeCode', async (req, res) => {
+// جلب المخالفات الخاصة بالموظف
+router.get('/employee', restrictTo(['admin', 'gps', 'employee']), async (req, res) => {
+  try {
+    const employeeCode = req.user.employeeCode;
+    const violations = await Violation.find({ employeeCode });
+    console.log(`تم جلب المخالفات للموظف ${employeeCode}:`, violations.length);
+    res.json({ success: true, data: violations });
+  } catch (error) {
+    console.error('خطأ في جلب المخالفات للموظف:', error);
+    res.status(500).json({ success: false, message: 'حدث خطأ أثناء جلب المخالفات', error: error.message });
+  }
+});
+
+// جلب بيانات الموظف بناءً على كود الموظف (لـ admin و gps فقط)
+router.get('/employee/:employeeCode', restrictTo(['admin', 'gps']), async (req, res) => {
   try {
     const user = await User.findOne({ employeeCode: req.params.employeeCode });
     if (!user) {
@@ -85,8 +137,8 @@ router.get('/employee/:employeeCode', async (req, res) => {
   }
 });
 
-// إنشاء مخالفة جديدة
-router.post('/', upload.single('violationImage'), async (req, res) => {
+// إنشاء مخالفة جديدة (لـ admin و gps فقط)
+router.post('/', restrictTo(['admin', 'gps']), upload.single('violationImage'), async (req, res) => {
   try {
     console.log('البيانات المستلمة:', req.body);
     console.log('الصورة المرفوعة:', req.file);
@@ -115,8 +167,8 @@ router.post('/', upload.single('violationImage'), async (req, res) => {
   }
 });
 
-// تعديل مخالفة
-router.put('/:id', upload.single('violationImage'), async (req, res) => {
+// تعديل مخالفة (لـ admin و gps فقط)
+router.put('/:id', restrictTo(['admin', 'gps']), upload.single('violationImage'), async (req, res) => {
   try {
     console.log('البيانات المستلمة للتعديل:', req.body);
     console.log('الصورة المرفوعة:', req.file);
@@ -154,8 +206,8 @@ router.put('/:id', upload.single('violationImage'), async (req, res) => {
   }
 });
 
-// حذف مخالفة
-router.delete('/:id', async (req, res) => {
+// حذف مخالفة (لـ admin و gps فقط)
+router.delete('/:id', restrictTo(['admin', 'gps']), async (req, res) => {
   try {
     const { id } = req.params;
     const violation = await Violation.findById(id);

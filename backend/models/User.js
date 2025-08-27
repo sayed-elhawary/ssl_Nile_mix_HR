@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const userSchema = new mongoose.Schema({
   employeeCode: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -22,31 +21,32 @@ const userSchema = new mongoose.Schema({
   advanceTotal: { type: Number, default: 0 },
   advanceInstallment: { type: Number, default: 0 },
   occasionBonus: { type: Number, default: 0 },
-  salaryAdjustments: {
+  violationAdjustments: {
     type: Map,
     of: {
       totalViolations: { type: Number, default: 0 },
       deductionViolationsInstallment: { type: Number, default: 0 },
+      remainingViolations: { type: Number, default: 0 },
+    },
+    default: {}
+  },
+  advanceAdjustments: {
+    type: Map,
+    of: {
       totalAdvances: { type: Number, default: 0 },
       deductionAdvancesInstallment: { type: Number, default: 0 },
+      remainingAdvances: { type: Number, default: 0 },
       occasionBonus: { type: Number, default: 0 },
       mealAllowance: { type: Number, default: 0 },
       mealDeduction: { type: Number, default: 0 },
-      remainingViolations: { type: Number, default: 0 },
-      remainingAdvances: { type: Number, default: 0 },
     },
-    default: {},
+    default: {}
   },
-  role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
+  role: { type: String, enum: ['admin', 'employee'], default: 'employee' }
 }, { timestamps: true, autoIndex: false });
 
-// تحسين استجابات JSON
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
-    ret.id = ret._id;
-    delete ret._id;
-    delete ret.__v;
-    delete ret.password; // إزالة كلمة المرور من الاستجابات
     return ret;
   }
 });
