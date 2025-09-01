@@ -12,7 +12,7 @@ const CustomCheckIcon = () => (
     exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-500"
+      className="h-full w-full text-green-500"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -48,6 +48,35 @@ function Navbar({ setIsAuthenticated }) {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const userRole = localStorage.getItem('role') || 'employee';
+
+  // تعريف الخيارات المتاحة لكل دور مع إضافة رابط الداسبورد
+  const menuItems = {
+    admin: [
+      { path: '/dashboard', label: 'الداشبورد', icon: <Home className="h-5 w-5" /> },
+      { path: '/create-shift', label: 'إنشاء شيفت', icon: <Edit className="h-5 w-5" /> },
+      { path: '/create-user', label: 'إنشاء مستخدم', icon: <UserPlus className="h-5 w-5" /> },
+      { path: '/edit-user', label: 'تعديل مستخدم', icon: <Edit className="h-5 w-5" /> },
+      { path: '/settings', label: 'الإعدادات', icon: <Settings className="h-5 w-5" /> },
+      { path: '/attendance-upload', label: 'رفع البصمة', icon: <Upload className="h-5 w-5" /> },
+      { path: '/monthly-salary-report', label: 'تقرير الرواتب الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/violations', label: 'المخالفات', icon: <AlertCircle className="h-5 w-5" /> },
+      { path: '/create-advance', label: 'إنشاء سلفة', icon: <DollarSign className="h-5 w-5" /> },
+    ],
+    gps: [
+      { path: '/dashboard', label: 'الداشبورد', icon: <Home className="h-5 w-5" /> },
+      { path: '/monthly-salary-report', label: 'تقرير الرواتب الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/violations', label: 'المخالفات', icon: <AlertCircle className="h-5 w-5" /> },
+    ],
+    employee: [
+      { path: '/dashboard', label: 'الداشبورد', icon: <Home className="h-5 w-5" /> },
+      { path: '/monthly-salary-report', label: 'تقرير الرواتب الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
+      { path: '/violations', label: 'المخالفات', icon: <AlertCircle className="h-5 w-5" /> },
+    ],
+  };
 
   const handleLogout = () => {
     setLoading(true);
@@ -60,7 +89,7 @@ function Navbar({ setIsAuthenticated }) {
       setLoading(false);
       navigate('/login');
       setIsMenuOpen(false);
-    }, 1000);
+    }, 1500);
   };
 
   const handleLinkClick = (path) => {
@@ -101,18 +130,10 @@ function Navbar({ setIsAuthenticated }) {
     }),
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'الداشبورد', icon: <Home className="h-5 w-5" /> },
-    { path: '/create-shift', label: 'إنشاء شيفت', icon: <Edit className="h-5 w-5" /> },
-    { path: '/create-user', label: 'إنشاء حساب', icon: <UserPlus className="h-5 w-5" /> },
-    { path: '/edit-user', label: 'تعديل حساب', icon: <Edit className="h-5 w-5" /> },
-    { path: '/settings', label: 'الإعدادات', icon: <Settings className="h-5 w-5" /> },
-    { path: '/attendance-upload', label: 'رفع الحضور', icon: <Upload className="h-5 w-5" /> },
-    { path: '/monthly-salary-report', label: 'تقرير المرتب', icon: <DollarSign className="h-5 w-5" /> },
-    { path: '/monthly-bonus-report', label: 'تقرير الحافز الشهري', icon: <DollarSign className="h-5 w-5" /> },
-    { path: '/violations', label: 'المخالفات', icon: <AlertCircle className="h-5 w-5" /> },
-    { path: '/create-advance', label: 'إنشاء سلفة', icon: <DollarSign className="h-5 w-5" /> },
-  ];
+  const logoVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } },
+  };
 
   return (
     <div className="font-noto-sans-arabic dir=rtl">
@@ -144,8 +165,18 @@ function Navbar({ setIsAuthenticated }) {
             className="fixed top-0 right-0 h-full w-64 bg-gray-800 p-4 z-40 flex flex-col gap-3 shadow-md border-l border-gray-200/20 overflow-y-auto"
           >
             <div className="relative z-10 flex flex-col gap-3 mt-12">
-              <h1 className="text-xl font-bold text-white text-right mb-6">HR</h1>
-              {navItems.map((item, index) => (
+              <div className="flex items-center justify-end gap-3 mb-6">
+                <motion.img
+                  src="http://www.nilemix.com/wp-content/uploads/2016/05/logo.png"
+                  alt="NileMix Logo"
+                  className="h-8"
+                  variants={logoVariants}
+                  initial="hidden"
+                  animate="visible"
+                />
+                <h1 className="text-xl font-bold text-white text-right">NileMix HR System</h1>
+              </div>
+              {menuItems[userRole].map((item, index) => (
                 <motion.div
                   key={item.path}
                   custom={index}
@@ -165,7 +196,7 @@ function Navbar({ setIsAuthenticated }) {
                 </motion.div>
               ))}
               <motion.div
-                custom={navItems.length}
+                custom={menuItems[userRole].length}
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
@@ -211,7 +242,7 @@ function Navbar({ setIsAuthenticated }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
+            className="fixed inset-0 flex items-center justify-center z-50 bg-black/60"
           >
             <div className="bg-white p-4 rounded-full shadow-md">
               <CustomCheckIcon />

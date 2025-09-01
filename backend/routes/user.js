@@ -45,23 +45,19 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
     const { yearMonth, employeeCode, shiftId } = req.query;
     const userRole = req.user.role;
     const currentEmployeeCode = req.user.employeeCode;
-
     if (!yearMonth) {
       return res.status(400).json({ success: false, message: 'يجب إدخال الشهر (YYYY-MM)' });
     }
-
     const [year, month] = yearMonth.split('-');
     if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
       return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
     }
-
     const startDate = new Date(`${yearMonth}-01`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
     endDate.setDate(0);
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
-
     let userFilter = {};
     if (userRole === 'employee') {
       userFilter.employeeCode = currentEmployeeCode;
@@ -72,42 +68,34 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
       console.warn(`Invalid role for user ${currentEmployeeCode}: ${userRole}`);
       return res.status(403).json({ success: false, message: 'دور المستخدم غير صالح' });
     }
-
     const users = await User.find(userFilter).populate('shiftType');
     if (!users.length) {
       return res.status(404).json({ success: false, message: 'لا يوجد موظفين بهذا الكود أو الشيفت' });
     }
-
     const shifts = await Shift.find();
     if (!shifts.length) {
       return res.status(404).json({ success: false, message: 'لا توجد شيفتات مسجلة' });
     }
-
     const reports = [];
     const totalsByEmployee = {};
-
     for (const user of users) {
       if (!['admin', 'employee'].includes(user.role)) {
         console.warn(`Skipping user ${user.employeeCode} due to invalid role: ${user.role}`);
         continue;
       }
-
       if (!user.shiftType || !user.shiftType._id) {
         console.warn(`User ${user.employeeCode} has no valid shiftType`);
         continue;
       }
-
       const shift = user.shiftType;
       if (!shift.baseHours || shift.baseHours <= 0) {
         console.warn(`Invalid baseHours for user ${user.employeeCode}: ${shift.baseHours}`);
         continue;
       }
-
       if (user.totalSalaryWithAllowances == null || user.basicSalary == null) {
         console.warn(`Invalid salary data for user ${user.employeeCode}: totalSalaryWithAllowances=${user.totalSalaryWithAllowances}, basicSalary=${user.basicSalary}`);
         continue;
       }
-
       // حساب الشهر السابق
       let prevMonth = parseInt(month) - 1;
       let prevYear = parseInt(year);
@@ -116,152 +104,157 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         prevYear--;
       }
       const prevMonthStr = `${prevYear}-${prevMonth.toString().padStart(2, '0')}`;
-
       // معالجة المخالفات (Violations)
       let violationAdjustments = user.violationAdjustments?.get(yearMonth) || null;
       let violationAdjustment = await ViolationAdjustment.findOne({ employeeCode: user.employeeCode, month: yearMonth });
-
       // إعادة حساب المخالفات من Violation
       const violations = await Violation.find({
         employeeCode: user.employeeCode,
         date: { $gte: startDate, $lte: endDate }
       });
-
       if (!violations.length) {
         console.warn(`No violations found for ${user.employeeCode} in ${yearMonth}`);
       }
-
       const totalViolationsForMonth = violations.reduce((sum, violation) => sum + (violation.violationPrice || 0), 0);
       console.log(`Total violations for ${user.employeeCode} in ${yearMonth}: ${totalViolationsForMonth}`);
-
       // تحديث ViolationAdjustment بناءً على المخالفات الجديدة
       const prevViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode: user.employeeCode, month: prevMonthStr });
       let prevRemainingViolations = prevViolationAdjustment ? roundNumber(prevViolationAdjustment.remainingViolations || 0) : 0;
-
       violationAdjustments = {
         totalViolations: roundNumber(prevRemainingViolations + totalViolationsForMonth),
         deductionViolationsInstallment: roundNumber(violationAdjustment?.deductionViolationsInstallment || 0),
         remainingViolations: roundNumber(prevRemainingViolations + totalViolationsForMonth - (violationAdjustment?.deductionViolationsInstallment || 0)),
       };
-
       violationAdjustment = await ViolationAdjustment.findOneAndUpdate(
         { employeeCode: user.employeeCode, month: yearMonth },
         violationAdjustments,
         { upsert: true, new: true }
       );
-
       user.violationAdjustments = user.violationAdjustments || new Map();
       user.violationAdjustments.set(yearMonth, violationAdjustments);
       user.violationTotal = roundNumber(violationAdjustments.totalViolations);
       user.violationInstallment = roundNumber(violationAdjustments.deductionViolationsInstallment);
       await user.save();
       console.log(`Updated violation adjustments for ${user.employeeCode} in ${yearMonth}:`, violationAdjustments);
-
-      // معالجة السلف (Advances)
-      let advanceAdjustments = user.advanceAdjustments?.get(yearMonth) || null;
-      let salaryAdjustment = await SalaryAdjustment.findOne({ employeeCode: user.employeeCode, month: yearMonth });
-
-      if (salaryAdjustment) {
+      // معالجة السلف (Advances) والجزاءات
+      let advanceAdjustments = {
+        totalAdvances: 0,
+        deductionAdvancesInstallment: 0,
+        remainingAdvances: 0,
+        occasionBonus: 0,
+        mealAllowance: roundNumber(user.mealAllowance || 0),
+        mealDeduction: 0,
+        penalties: 0, // إضافة حقل الجزاءات
+      };
+      // التحقق إذا كان الشهر تم حسابه مسبقًا في SalaryAdjustment
+      const existingSalaryAdjustment = await SalaryAdjustment.findOne({
+        employeeCode: user.employeeCode,
+        month: yearMonth,
+      });
+      if (existingSalaryAdjustment) {
+        // إذا كان الشهر موجود في SalaryAdjustment، نستخدم القيم المخزنة
         advanceAdjustments = {
-          totalAdvances: roundNumber(salaryAdjustment.totalAdvances || 0),
-          deductionAdvancesInstallment: roundNumber(salaryAdjustment.deductionAdvancesInstallment || 0),
-          remainingAdvances: roundNumber(salaryAdjustment.remainingAdvances || 0),
-          occasionBonus: roundNumber(salaryAdjustment.occasionBonus || 0),
-          mealAllowance: roundNumber(salaryAdjustment.mealAllowance || user.mealAllowance || 0),
-          mealDeduction: roundNumber(salaryAdjustment.mealDeduction || 0),
+          totalAdvances: roundNumber(existingSalaryAdjustment.totalAdvances || 0),
+          deductionAdvancesInstallment: roundNumber(existingSalaryAdjustment.deductionAdvancesInstallment || 0),
+          remainingAdvances: roundNumber(existingSalaryAdjustment.remainingAdvances || 0),
+          occasionBonus: roundNumber(existingSalaryAdjustment.occasionBonus || 0),
+          mealAllowance: roundNumber(existingSalaryAdjustment.mealAllowance || 0),
+          mealDeduction: roundNumber(existingSalaryAdjustment.mealDeduction || 0),
+          penalties: roundNumber(existingSalaryAdjustment.penalties || 0), // إضافة حقل الجزاءات
         };
-        user.advanceAdjustments = user.advanceAdjustments || new Map();
-        user.advanceAdjustments.set(yearMonth, advanceAdjustments);
-        user.advanceTotal = roundNumber(advanceAdjustments.totalAdvances);
-        user.advanceInstallment = roundNumber(advanceAdjustments.deductionAdvancesInstallment);
-        await user.save();
-        console.log(`Loaded historical advance adjustments for ${user.employeeCode} in ${yearMonth}:`, advanceAdjustments);
+        console.log(`Using existing SalaryAdjustment for ${user.employeeCode} in ${yearMonth}:`, advanceAdjustments);
       } else {
-        const prevSalaryAdjustment = await SalaryAdjustment.findOne({ employeeCode: user.employeeCode, month: prevMonthStr });
-        let prevRemainingAdvances = prevSalaryAdjustment ? roundNumber(prevSalaryAdjustment.remainingAdvances || 0) : 0;
-
+        // إذا كان الشهر جديد، نحسب القيم
+        const currentYearMonth = new Date().toISOString().slice(0, 7); // الشهر الحالي YYYY-MM
         const activeAdvances = await Advance.find({
           employeeCode: user.employeeCode,
           advanceDate: { $lte: endDate },
           finalRepaymentDate: { $gte: startDate },
-          status: 'active'
-        });
-
-        console.log(`Found ${activeAdvances.length} active advances for ${user.employeeCode}:`, activeAdvances);
-
-        let newAdvancesSum = 0;
-        let activeMonthlySum = 0;
+          status: 'active',
+        }).lean();
+        let totalAdvancesFull = 0; // إجمالي مبلغ السلف الأصلي
+        let totalAdvancesRemaining = 0; // المبلغ المتبقي بعد الخصومات
+        let deductionAdvancesInstallment = 0; // قسط الشهر الحالي
         for (const advance of activeAdvances) {
-          if (!advance.isIncluded) {
-            newAdvancesSum += roundNumber(advance.advanceAmount || 0);
-            await Advance.findByIdAndUpdate(advance._id, { isIncluded: true });
-            console.log(`Marked advance ${advance._id} as included for ${user.employeeCode}`);
-          }
-
-          // حساب عدد الأشهر المتبقية باستخدام Date
+          totalAdvancesFull += roundNumber(advance.advanceAmount || 0);
+          // جمع الخصومات السابقة من deductionHistory حتى الشهر السابق
+          const previousDeductions = advance.deductionHistory
+            .filter((deduction) => deduction.month < yearMonth)
+            .reduce((sum, deduction) => sum + roundNumber(deduction.amount || 0), 0);
+          // المبلغ المتبقي = المبلغ الأصلي - الخصومات السابقة
+          const remainingForAdvance = roundNumber(advance.advanceAmount - previousDeductions);
+          // إضافة المبلغ المتبقي إلى الإجمالي
+          totalAdvancesRemaining += remainingForAdvance;
+          // حساب قسط الشهر الحالي إذا كان الشهر ضمن فترة السداد
           const advanceStartDate = new Date(advance.advanceDate);
           const currentDate = new Date(`${yearMonth}-01`);
           const monthsPassed = (currentDate.getFullYear() - advanceStartDate.getFullYear()) * 12 + currentDate.getMonth() - advanceStartDate.getMonth();
-          const monthsRemaining = advance.installmentMonths - monthsPassed;
-
-          if (monthsRemaining > 0 && advance.lastDeductionMonth !== yearMonth) {
-            activeMonthlySum += roundNumber(advance.monthlyInstallment || 0);
-            const newRemainingAmount = roundNumber(advance.remainingAmount - advance.monthlyInstallment);
-            await Advance.findByIdAndUpdate(
-              advance._id,
-              {
-                remainingAmount: Math.max(newRemainingAmount, 0),
-                lastDeductionMonth: yearMonth,
-                status: newRemainingAmount <= 0 ? 'completed' : 'active',
-                $push: {
-                  deductionHistory: {
-                    month: yearMonth,
-                    amount: advance.monthlyInstallment,
-                    deductionDate: new Date()
-                  }
-                }
-              }
-            );
-            console.log(`Updated advance ${advance._id} for ${user.employeeCode}: remainingAmount=${newRemainingAmount}, status=${newRemainingAmount <= 0 ? 'completed' : 'active'}, lastDeductionMonth=${yearMonth}`);
-          } else {
-            console.log(`Advance ${advance._id} for ${user.employeeCode} already deducted for ${yearMonth} or completed`);
+          let deductionForMonth = 0;
+          if (monthsPassed >= 0 && monthsPassed < advance.installmentMonths && remainingForAdvance > 0) {
+            // التحقق إذا تم خصم لهذا الشهر سابقًا
+            const existingDeduction = advance.deductionHistory.find((d) => d.month === yearMonth);
+            if (existingDeduction) {
+              // إذا موجود، استخدم القيمة الفعلية
+              deductionForMonth = roundNumber(existingDeduction.amount || 0);
+            } else if (yearMonth === currentYearMonth) {
+              // إذا مش موجود، والشهر هو الحالي، خصم الآن
+              deductionForMonth = Math.min(roundNumber(advance.monthlyInstallment || 0), remainingForAdvance);
+              // تحديث Advance لتسجيل الخصم (فقط إذا الشهر حالي)
+              await Advance.findByIdAndUpdate(
+                advance._id,
+                {
+                  remainingAmount: Math.max(roundNumber(remainingForAdvance - deductionForMonth), 0),
+                  lastDeductionMonth: yearMonth,
+                  status: remainingForAdvance - deductionForMonth <= 0 ? 'completed' : 'active',
+                  $push: {
+                    deductionHistory: {
+                      month: yearMonth,
+                      amount: deductionForMonth,
+                      deductionDate: new Date(),
+                    },
+                  },
+                },
+                { new: true }
+              );
+            } else {
+              // إذا الشهر ماضي أو مستقبل ومش مخصوم، set 0 (مش نخصم)
+              deductionForMonth = 0;
+            }
           }
+          deductionAdvancesInstallment += deductionForMonth;
+          // خصم القسط من المتبقي للعرض
+          totalAdvancesRemaining = roundNumber(totalAdvancesRemaining - deductionForMonth);
         }
-
-        const totalAdvances = roundNumber(prevRemainingAdvances + newAdvancesSum);
-        const deductionAdvancesInstallment = roundNumber(Math.min(activeMonthlySum, totalAdvances));
-        const remainingAdvances = roundNumber(totalAdvances - deductionAdvancesInstallment);
-
+        // تحديث advanceAdjustments
         advanceAdjustments = {
-          totalAdvances,
-          deductionAdvancesInstallment,
-          remainingAdvances,
+          totalAdvances: totalAdvancesFull,
+          deductionAdvancesInstallment: deductionAdvancesInstallment,
+          remainingAdvances: totalAdvancesRemaining,
           occasionBonus: 0,
           mealAllowance: roundNumber(user.mealAllowance || 0),
           mealDeduction: 0,
+          penalties: 0, // إضافة حقل الجزاءات
         };
-
-        salaryAdjustment = await SalaryAdjustment.findOneAndUpdate(
+        // حفظ القيم في SalaryAdjustment
+        await SalaryAdjustment.findOneAndUpdate(
           { employeeCode: user.employeeCode, month: yearMonth },
           advanceAdjustments,
           { upsert: true, new: true }
         );
-
-        user.advanceAdjustments = user.advanceAdjustments || new Map();
-        user.advanceAdjustments.set(yearMonth, advanceAdjustments);
-        user.advanceTotal = roundNumber(totalAdvances);
-        user.advanceInstallment = roundNumber(deductionAdvancesInstallment);
-        await user.save();
-        console.log(`Saved advance adjustments for ${user.employeeCode} for ${yearMonth}:`, advanceAdjustments);
+        console.log(`Created new SalaryAdjustment for ${user.employeeCode} in ${yearMonth}:`, advanceAdjustments);
       }
-
+      // تحديث advanceAdjustments في User
+      user.advanceAdjustments = user.advanceAdjustments || new Map();
+      user.advanceAdjustments.set(yearMonth, advanceAdjustments);
+      user.advanceTotal = roundNumber(advanceAdjustments.totalAdvances);
+      user.advanceInstallment = roundNumber(advanceAdjustments.deductionAdvancesInstallment);
+      await user.save();
       // حسابات الحضور
       const attendanceQuery = {
         employeeCode: user.employeeCode,
         date: { $gte: startDateStr, $lte: endDateStr },
       };
       const attendances = await Attendance.find(attendanceQuery).sort({ date: 1 });
-
       let totalAttendanceDays = 0;
       let totalWeeklyOffDays = 0;
       let totalOfficialLeaveDays = 0;
@@ -272,7 +265,6 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
       let totalAnnualLeaveDays = 0;
       let totalSickLeaveDays = 0;
       let totalLeaveAllowance = 0;
-
       for (const att of attendances) {
         if (att.attendanceStatus === 'حاضر' || att.attendanceStatus === 'متأخر') totalAttendanceDays++;
         if (att.attendanceStatus === 'إجازة أسبوعية') totalWeeklyOffDays++;
@@ -285,21 +277,17 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         if (att.attendanceStatus === 'إجازة مرضية') totalSickLeaveDays++;
         if (att.leaveAllowance === 'نعم') totalLeaveAllowance += 1;
       }
-
       const mealDeductionPerDay = 50;
       const mealDeductionDays = totalAbsentDays + totalAnnualLeaveDays + totalOfficialLeaveDays + totalSickLeaveDays;
       const mealDeduction = roundNumber(Math.min(mealDeductionDays * mealDeductionPerDay, user.mealAllowance || 0));
       const remainingMealAllowance = roundNumber((user.mealAllowance || 0) - mealDeduction);
-
       const dailyRate = roundNumber(user.totalSalaryWithAllowances / 30);
       const hourlyRate = roundNumber(user.totalSalaryWithAllowances / (30 * shift.baseHours));
       const hasMinutesDeduction = shift.deductions ? shift.deductions.some(d => d.type === 'minutes') : false;
-
       const deductedDaysAmount = roundNumber(totalDeductedDays * dailyRate);
       const deductedHoursAmount = hasMinutesDeduction ? roundNumber(totalDeductedHours * hourlyRate) : 0;
       const overtimeAmount = roundNumber(totalOvertimeHours * (shift.overtimeBasis === 'basicSalary' ? (user.basicSalary / (30 * shift.baseHours)) : hourlyRate));
       const leaveAllowanceAmount = roundNumber(totalLeaveAllowance * dailyRate);
-
       const totalDeductions = roundNumber(
         (user.medicalInsurance || 0) +
         (user.socialInsurance || 0) +
@@ -307,9 +295,9 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         deductedHoursAmount +
         (violationAdjustments.deductionViolationsInstallment || 0) +
         (advanceAdjustments.deductionAdvancesInstallment || 0) +
-        mealDeduction
+        mealDeduction +
+        (advanceAdjustments.penalties || 0) // إضافة الجزاءات إلى إجمالي الخصومات
       );
-
       const totalAdditions = roundNumber(
         user.totalSalaryWithAllowances +
         (user.mealAllowance || 0) +
@@ -317,9 +305,7 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         overtimeAmount +
         leaveAllowanceAmount
       );
-
       const net = roundNumber(totalAdditions - totalDeductions);
-
       console.log(`Final calculations for ${user.employeeCode} in ${yearMonth}:`, {
         totalDeductions,
         deductionsBreakdown: {
@@ -330,6 +316,7 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
           deductionViolationsInstallment: violationAdjustments.deductionViolationsInstallment || 0,
           deductionAdvancesInstallment: advanceAdjustments.deductionAdvancesInstallment || 0,
           mealDeduction,
+          penalties: advanceAdjustments.penalties || 0, // إضافة الجزاءات
         },
         totalAdditions,
         additionsBreakdown: {
@@ -341,7 +328,6 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         },
         net,
       });
-
       totalsByEmployee[user.employeeCode] = {
         employeeCode: user.employeeCode,
         employeeName: user.name,
@@ -368,22 +354,20 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
         totalViolationsFull: roundNumber(violationAdjustments.totalViolations || 0),
         totalViolations: roundNumber(violationAdjustments.remainingViolations || 0),
         violationDeduction: roundNumber(violationAdjustments.deductionViolationsInstallment || 0),
-        totalLoansFull: roundNumber(advanceAdjustments.totalAdvances || 0),
-        totalLoans: roundNumber(advanceAdjustments.remainingAdvances || 0),
-        loanDeduction: roundNumber(advanceAdjustments.deductionAdvancesInstallment || 0),
+        totalLoansFull: roundNumber(advanceAdjustments.totalAdvances),
+        totalLoans: roundNumber(advanceAdjustments.remainingAdvances),
+        loanDeduction: roundNumber(advanceAdjustments.deductionAdvancesInstallment),
+        penalties: roundNumber(advanceAdjustments.penalties || 0), // إضافة حقل الجزاءات
         totalDeductions: roundNumber(totalDeductions),
         totalOvertimeAmount: roundNumber(totalAdditions),
         finalSalary: roundNumber(net),
         deductedDaysAmount: roundNumber(deductedDaysAmount),
       };
-
       reports.push(totalsByEmployee[user.employeeCode]);
     }
-
     if (!reports.length) {
       return res.status(404).json({ success: false, message: 'لا توجد تقارير متاحة للموظفين المحددين' });
     }
-
     res.json({
       success: true,
       message: 'تم جلب تقرير الراتب الشهري بنجاح',
@@ -400,7 +384,159 @@ router.get('/monthly-salary-report', authenticateToken, async (req, res) => {
   }
 });
 
-// إنشاء سلفة
+// تعديل تعديلات الراتب
+router.put('/update-salary-adjustment/:employeeCode/:monthYear', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'ممنوع: يتطلب صلاحية أدمن' });
+    }
+    const { employeeCode, monthYear } = req.params;
+    const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment, occasionBonus, penalties } = req.body;
+    if (!employeeCode || !monthYear) {
+      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان', data: null });
+    }
+    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
+      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM', data: null });
+    }
+    const user = await User.findOne({ employeeCode });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'الموظف غير موجود', data: null });
+    }
+    // معالجة المخالفات
+    if (totalViolations !== undefined || deductionViolationsInstallment !== undefined) {
+      if (totalViolations === undefined || deductionViolationsInstallment === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'إجمالي المخالفات وخصم المخالفات مطلوبان',
+          data: null,
+        });
+      }
+      if (totalViolations < 0 || deductionViolationsInstallment < 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'قيم المخالفات لا يمكن أن تكون سالبة',
+          data: null,
+        });
+      }
+      if (deductionViolationsInstallment > totalViolations) {
+        return res.status(400).json({
+          success: false,
+          message: 'قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات',
+          data: null,
+        });
+      }
+      const startDate = new Date(`${monthYear}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      endDate.setDate(0);
+      const violations = await Violation.find({
+        employeeCode,
+        date: { $gte: startDate, $lte: endDate }
+      });
+      const calculatedTotalViolations = violations.reduce((sum, v) => sum + (v.violationPrice || 0), 0);
+      const prevMonth = parseInt(monthYear.split('-')[1]) - 1 < 1
+        ? `${parseInt(monthYear.split('-')[0]) - 1}-12`
+        : `${monthYear.split('-')[0]}-${(parseInt(monthYear.split('-')[1]) - 1).toString().padStart(2, '0')}`;
+      const prevViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: prevMonth });
+      const prevRemainingViolations = prevViolationAdjustment ? roundNumber(prevViolationAdjustment.remainingViolations || 0) : 0;
+      const violationAdjustment = await ViolationAdjustment.findOneAndUpdate(
+        { employeeCode, month: monthYear },
+        {
+          totalViolations: roundNumber(Number(totalViolations) || calculatedTotalViolations),
+          deductionViolationsInstallment: roundNumber(Number(deductionViolationsInstallment) || 0),
+          remainingViolations: roundNumber(Number(totalViolations || calculatedTotalViolations) - Number(deductionViolationsInstallment || 0)),
+        },
+        { upsert: true, new: true }
+      );
+      user.violationAdjustments = user.violationAdjustments || new Map();
+      user.violationAdjustments.set(monthYear, {
+        totalViolations: violationAdjustment.totalViolations,
+        deductionViolationsInstallment: violationAdjustment.deductionViolationsInstallment,
+        remainingViolations: violationAdjustment.remainingViolations,
+      });
+      user.violationTotal = roundNumber(Number(totalViolations) || calculatedTotalViolations);
+      user.violationInstallment = roundNumber(Number(deductionViolationsInstallment) || 0);
+      await user.save();
+    }
+    // معالجة السلف والجزاءات
+    if (totalAdvances !== undefined || deductionAdvancesInstallment !== undefined || occasionBonus !== undefined || penalties !== undefined) {
+      if (totalAdvances === undefined || deductionAdvancesInstallment === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'إجمالي السلف وخصم السلف مطلوبان',
+          data: null,
+        });
+      }
+      if (totalAdvances < 0 || deductionAdvancesInstallment < 0 || (penalties !== undefined && penalties < 0)) {
+        return res.status(400).json({
+          success: false,
+          message: 'قيم السلف أو الجزاءات لا يمكن أن تكون سالبة',
+          data: null,
+        });
+      }
+      if (deductionAdvancesInstallment > totalAdvances) {
+        return res.status(400).json({
+          success: false,
+          message: 'قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف',
+          data: null,
+        });
+      }
+      const salaryAdjustment = await SalaryAdjustment.findOneAndUpdate(
+        { employeeCode, month: monthYear },
+        {
+          totalAdvances: roundNumber(Number(totalAdvances) || 0),
+          deductionAdvancesInstallment: roundNumber(Number(deductionAdvancesInstallment) || 0),
+          occasionBonus: roundNumber(Number(occasionBonus) || 0),
+          remainingAdvances: roundNumber(Number(totalAdvances) - Number(deductionAdvancesInstallment)),
+          mealAllowance: roundNumber(user.mealAllowance || 0),
+          mealDeduction: 0,
+          penalties: roundNumber(Number(penalties) || 0), // إضافة حقل الجزاءات
+        },
+        { upsert: true, new: true }
+      );
+      user.advanceAdjustments = user.advanceAdjustments || new Map();
+      user.advanceAdjustments.set(monthYear, {
+        totalAdvances: salaryAdjustment.totalAdvances,
+        deductionAdvancesInstallment: salaryAdjustment.deductionAdvancesInstallment,
+        remainingAdvances: salaryAdjustment.remainingAdvances,
+        occasionBonus: salaryAdjustment.occasionBonus,
+        mealAllowance: salaryAdjustment.mealAllowance,
+        mealDeduction: salaryAdjustment.mealDeduction,
+        penalties: salaryAdjustment.penalties, // إضافة حقل الجزاءات
+      });
+      user.advanceTotal = roundNumber(Number(totalAdvances) || user.advanceTotal || 0);
+      user.advanceInstallment = roundNumber(Number(deductionAdvancesInstallment) || user.advanceInstallment || 0);
+      user.occasionBonus = roundNumber(Number(occasionBonus) || user.occasionBonus || 0);
+      await user.save();
+    }
+    const violationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: monthYear });
+    const salaryAdjustment = await SalaryAdjustment.findOne({ employeeCode, month: monthYear });
+    return res.status(200).json({
+      success: true,
+      message: 'تم تعديل تعديلات الراتب بنجاح',
+      data: {
+        totalViolationsFull: roundNumber(violationAdjustment?.totalViolations || 0),
+        violationDeduction: roundNumber(violationAdjustment?.deductionViolationsInstallment || 0),
+        totalViolations: roundNumber(violationAdjustment?.remainingViolations || 0),
+        totalLoansFull: roundNumber(salaryAdjustment?.totalAdvances || 0),
+        loanDeduction: roundNumber(salaryAdjustment?.deductionAdvancesInstallment || 0),
+        totalLoans: roundNumber(salaryAdjustment?.remainingAdvances || 0),
+        occasionBonus: roundNumber(salaryAdjustment?.occasionBonus || 0),
+        penalties: roundNumber(salaryAdjustment?.penalties || 0), // إضافة حقل الجزاءات
+      },
+    });
+  } catch (error) {
+    console.error('خطأ في updateSalaryAdjustment:', error.message, error.stack);
+    return res.status(500).json({
+      success: false,
+      message: 'حدث خطأ أثناء التعديل',
+      error: error.message,
+      data: null,
+    });
+  }
+});
+
+// باقي نقاط النهاية (بدون تغيير)
 router.post('/advances', authenticateToken, async (req, res) => {
   try {
     const { employeeCode, advanceAmount, monthlyInstallment, advanceDate, finalRepaymentDate, installmentMonths } = req.body;
@@ -411,8 +547,6 @@ router.post('/advances', authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
     }
-
-    // التحقق من توافق finalRepaymentDate مع installmentMonths
     const startDate = new Date(advanceDate);
     const expectedEndDate = new Date(startDate);
     expectedEndDate.setMonth(expectedEndDate.getMonth() + parseInt(installmentMonths));
@@ -420,7 +554,6 @@ router.post('/advances', authenticateToken, async (req, res) => {
     if (new Date(finalRepaymentDate).toISOString().split('T')[0] !== expectedEndDate.toISOString().split('T')[0]) {
       console.warn(`Final repayment date mismatch: provided=${finalRepaymentDate}, expected=${expectedEndDate.toISOString().split('T')[0]}`);
     }
-
     const advance = new Advance({
       employeeCode,
       employeeName: user.name,
@@ -436,7 +569,6 @@ router.post('/advances', authenticateToken, async (req, res) => {
       deductionHistory: [],
     });
     await advance.save();
-
     const yearMonth = advanceDate.toISOString().slice(0, 7);
     let advanceAdjustments = user.advanceAdjustments?.get(yearMonth) || {
       totalAdvances: 0,
@@ -444,7 +576,8 @@ router.post('/advances', authenticateToken, async (req, res) => {
       remainingAdvances: 0,
       occasionBonus: 0,
       mealAllowance: user.mealAllowance || 0,
-      mealDeduction: 0
+      mealDeduction: 0,
+      penalties: 0, // إضافة حقل الجزاءات
     };
     advanceAdjustments.totalAdvances = roundNumber(advanceAdjustments.totalAdvances + advanceAmount);
     advanceAdjustments.deductionAdvancesInstallment = roundNumber(monthlyInstallment);
@@ -491,7 +624,6 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
     const newMonthlyInstallment = roundNumber(monthlyInstallment);
     const newYearMonth = new Date(advanceDate).toISOString().slice(0, 7);
     const newInstallmentMonths = parseInt(installmentMonths);
-
     // التحقق من توافق finalRepaymentDate
     const startDate = new Date(advanceDate);
     const expectedEndDate = new Date(startDate);
@@ -500,7 +632,6 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
     if (new Date(finalRepaymentDate).toISOString().split('T')[0] !== expectedEndDate.toISOString().split('T')[0]) {
       console.warn(`Final repayment date mismatch: provided=${finalRepaymentDate}, expected=${expectedEndDate.toISOString().split('T')[0]}`);
     }
-
     advance.advanceAmount = newAdvanceAmount;
     advance.monthlyInstallment = newMonthlyInstallment;
     advance.advanceDate = new Date(advanceDate);
@@ -521,7 +652,6 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
       deductedAmount,
       newRemainingAmount: advance.remainingAmount
     });
-
     // تحديث SalaryAdjustment
     if (oldYearMonth === newYearMonth) {
       let salaryAdjustment = await SalaryAdjustment.findOne({ employeeCode, month: newYearMonth });
@@ -531,7 +661,8 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
         remainingAdvances: 0,
         occasionBonus: 0,
         mealAllowance: user.mealAllowance || 0,
-        mealDeduction: 0
+        mealDeduction: 0,
+        penalties: 0, // إضافة حقل الجزاءات
       };
       const activeAdvances = await Advance.find({
         employeeCode,
@@ -577,7 +708,8 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
           remainingAdvances: 0,
           occasionBonus: 0,
           mealAllowance: user.mealAllowance || 0,
-          mealDeduction: 0
+          mealDeduction: 0,
+          penalties: 0, // إضافة حقل الجزاءات
         };
         oldAdvanceAdjustments.totalAdvances = 0;
         oldAdvanceAdjustments.deductionAdvancesInstallment = 0;
@@ -593,7 +725,8 @@ router.put('/advances/:id', authenticateToken, async (req, res) => {
         remainingAdvances: 0,
         occasionBonus: 0,
         mealAllowance: user.mealAllowance || 0,
-        mealDeduction: 0
+        mealDeduction: 0,
+        penalties: 0, // إضافة حقل الجزاءات
       };
       const activeAdvances = await Advance.find({
         employeeCode,
@@ -639,29 +772,22 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'ممنوع: يتطلب صلاحية أدمن' });
     }
-
     const { id } = req.params;
     const { date, violationPrice, description } = req.body;
-
     if (!date || !violationPrice) {
       return res.status(400).json({ success: false, message: 'التاريخ وسعر المخالفة مطلوبان' });
     }
-
     const violation = await Violation.findById(id);
     if (!violation) {
       return res.status(404).json({ success: false, message: 'المخالفة غير موجودة' });
     }
-
     const oldYearMonth = violation.date.toISOString().slice(0, 7);
     const newYearMonth = new Date(date).toISOString().slice(0, 7);
-
     violation.date = new Date(date);
     violation.violationPrice = roundNumber(violationPrice);
     violation.description = description || violation.description;
     await violation.save();
-
     const employeeCode = violation.employeeCode;
-
     // تحديث ViolationAdjustment للشهر القديم إذا تغير
     if (oldYearMonth !== newYearMonth) {
       let oldViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: oldYearMonth });
@@ -677,7 +803,6 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
         oldViolationAdjustment.totalViolations = roundNumber(totalViolationsOldMonth);
         oldViolationAdjustment.remainingViolations = roundNumber(totalViolationsOldMonth - oldViolationAdjustment.deductionViolationsInstallment);
         await oldViolationAdjustment.save();
-
         const user = await User.findOne({ employeeCode });
         user.violationAdjustments.set(oldYearMonth, {
           totalViolations: oldViolationAdjustment.totalViolations,
@@ -688,7 +813,6 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
         console.log(`Updated ViolationAdjustment for ${employeeCode} in ${oldYearMonth}`);
       }
     }
-
     // تحديث ViolationAdjustment للشهر الجديد
     let newViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: newYearMonth });
     const violationsNewMonth = await Violation.find({
@@ -704,7 +828,6 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
       : `${newYearMonth.split('-')[0]}-${(parseInt(newYearMonth.split('-')[1]) - 1).toString().padStart(2, '0')}`;
     const prevViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: prevMonth });
     const prevRemainingViolations = prevViolationAdjustment ? roundNumber(prevViolationAdjustment.remainingViolations || 0) : 0;
-
     newViolationAdjustment = await ViolationAdjustment.findOneAndUpdate(
       { employeeCode, month: newYearMonth },
       {
@@ -714,7 +837,6 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
       },
       { upsert: true, new: true }
     );
-
     const user = await User.findOne({ employeeCode });
     user.violationAdjustments = user.violationAdjustments || new Map();
     user.violationAdjustments.set(newYearMonth, {
@@ -726,168 +848,10 @@ router.put('/violations/:id', authenticateToken, async (req, res) => {
     user.violationInstallment = roundNumber(newViolationAdjustment.deductionViolationsInstallment);
     await user.save();
     console.log(`Updated ViolationAdjustment for ${employeeCode} in ${newYearMonth}`);
-
     res.json({ success: true, message: 'تم تعديل المخالفة بنجاح', data: violation });
   } catch (err) {
     console.error('Error in PUT /user/violations/:id:', { message: err.message, stack: err.stack });
     res.status(500).json({ success: false, message: `حدث خطأ: ${err.message}` });
-  }
-});
-
-// تعديل تعديلات الراتب
-router.put('/update-salary-adjustment/:employeeCode/:monthYear', authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'ممنوع: يتطلب صلاحية أدمن' });
-    }
-    const { employeeCode, monthYear } = req.params;
-    const { totalViolations, deductionViolationsInstallment, totalAdvances, deductionAdvancesInstallment, occasionBonus } = req.body;
-    if (!employeeCode || !monthYear) {
-      return res.status(400).json({ success: false, message: 'كود الموظف والشهر مطلوبان', data: null });
-    }
-    if (!/^\d{4}-\d{2}$/.test(monthYear)) {
-      return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM', data: null });
-    }
-    const user = await User.findOne({ employeeCode });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'الموظف غير موجود', data: null });
-    }
-
-    // معالجة المخالفات
-    if (totalViolations !== undefined || deductionViolationsInstallment !== undefined) {
-      if (totalViolations === undefined || deductionViolationsInstallment === undefined) {
-        return res.status(400).json({
-          success: false,
-          message: 'إجمالي المخالفات وخصم المخالفات مطلوبان',
-          data: null,
-        });
-      }
-      if (totalViolations < 0 || deductionViolationsInstallment < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'قيم المخالفات لا يمكن أن تكون سالبة',
-          data: null,
-        });
-      }
-      if (deductionViolationsInstallment > totalViolations) {
-        return res.status(400).json({
-          success: false,
-          message: 'قسط المخالفات لا يمكن أن يكون أكبر من إجمالي المخالفات',
-          data: null,
-        });
-      }
-
-      const startDate = new Date(`${monthYear}-01`);
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + 1);
-      endDate.setDate(0);
-      const violations = await Violation.find({
-        employeeCode,
-        date: { $gte: startDate, $lte: endDate }
-      });
-      const calculatedTotalViolations = violations.reduce((sum, v) => sum + (v.violationPrice || 0), 0);
-
-      const prevMonth = parseInt(monthYear.split('-')[1]) - 1 < 1
-        ? `${parseInt(monthYear.split('-')[0]) - 1}-12`
-        : `${monthYear.split('-')[0]}-${(parseInt(monthYear.split('-')[1]) - 1).toString().padStart(2, '0')}`;
-      const prevViolationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: prevMonth });
-      const prevRemainingViolations = prevViolationAdjustment ? roundNumber(prevViolationAdjustment.remainingViolations || 0) : 0;
-
-      const violationAdjustment = await ViolationAdjustment.findOneAndUpdate(
-        { employeeCode, month: monthYear },
-        {
-          totalViolations: roundNumber(Number(totalViolations) || calculatedTotalViolations),
-          deductionViolationsInstallment: roundNumber(Number(deductionViolationsInstallment) || 0),
-          remainingViolations: roundNumber(Number(totalViolations || calculatedTotalViolations) - Number(deductionViolationsInstallment || 0)),
-        },
-        { upsert: true, new: true }
-      );
-
-      user.violationAdjustments = user.violationAdjustments || new Map();
-      user.violationAdjustments.set(monthYear, {
-        totalViolations: violationAdjustment.totalViolations,
-        deductionViolationsInstallment: violationAdjustment.deductionViolationsInstallment,
-        remainingViolations: violationAdjustment.remainingViolations,
-      });
-      user.violationTotal = roundNumber(Number(totalViolations) || calculatedTotalViolations);
-      user.violationInstallment = roundNumber(Number(deductionViolationsInstallment) || 0);
-      await user.save();
-    }
-
-    // معالجة السلف
-    if (totalAdvances !== undefined || deductionAdvancesInstallment !== undefined || occasionBonus !== undefined) {
-      if (totalAdvances === undefined || deductionAdvancesInstallment === undefined) {
-        return res.status(400).json({
-          success: false,
-          message: 'إجمالي السلف وخصم السلف مطلوبان',
-          data: null,
-        });
-      }
-      if (totalAdvances < 0 || deductionAdvancesInstallment < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'قيم السلف لا يمكن أن تكون سالبة',
-          data: null,
-        });
-      }
-      if (deductionAdvancesInstallment > totalAdvances) {
-        return res.status(400).json({
-          success: false,
-          message: 'قسط السلف لا يمكن أن يكون أكبر من إجمالي السلف',
-          data: null,
-        });
-      }
-      const salaryAdjustment = await SalaryAdjustment.findOneAndUpdate(
-        { employeeCode, month: monthYear },
-        {
-          totalAdvances: roundNumber(Number(totalAdvances) || 0),
-          deductionAdvancesInstallment: roundNumber(Number(deductionAdvancesInstallment) || 0),
-          occasionBonus: roundNumber(Number(occasionBonus) || 0),
-          remainingAdvances: roundNumber(Number(totalAdvances) - Number(deductionAdvancesInstallment)),
-          mealAllowance: roundNumber(user.mealAllowance || 0),
-          mealDeduction: 0,
-        },
-        { upsert: true, new: true }
-      );
-      user.advanceAdjustments = user.advanceAdjustments || new Map();
-      user.advanceAdjustments.set(monthYear, {
-        totalAdvances: salaryAdjustment.totalAdvances,
-        deductionAdvancesInstallment: salaryAdjustment.deductionAdvancesInstallment,
-        remainingAdvances: salaryAdjustment.remainingAdvances,
-        occasionBonus: salaryAdjustment.occasionBonus,
-        mealAllowance: salaryAdjustment.mealAllowance,
-        mealDeduction: salaryAdjustment.mealDeduction,
-      });
-      user.advanceTotal = roundNumber(Number(totalAdvances) || user.advanceTotal || 0);
-      user.advanceInstallment = roundNumber(Number(deductionAdvancesInstallment) || user.advanceInstallment || 0);
-      user.occasionBonus = roundNumber(Number(occasionBonus) || user.occasionBonus || 0);
-      await user.save();
-    }
-
-    const violationAdjustment = await ViolationAdjustment.findOne({ employeeCode, month: monthYear });
-    const salaryAdjustment = await SalaryAdjustment.findOne({ employeeCode, month: monthYear });
-
-    return res.status(200).json({
-      success: true,
-      message: 'تم تعديل تعديلات الراتب بنجاح',
-      data: {
-        totalViolationsFull: roundNumber(violationAdjustment?.totalViolations || 0),
-        violationDeduction: roundNumber(violationAdjustment?.deductionViolationsInstallment || 0),
-        totalViolations: roundNumber(violationAdjustment?.remainingViolations || 0),
-        totalLoansFull: roundNumber(salaryAdjustment?.totalAdvances || 0),
-        loanDeduction: roundNumber(salaryAdjustment?.deductionAdvancesInstallment || 0),
-        totalLoans: roundNumber(salaryAdjustment?.remainingAdvances || 0),
-        occasionBonus: roundNumber(salaryAdjustment?.occasionBonus || 0),
-      },
-    });
-  } catch (error) {
-    console.error('خطأ في updateSalaryAdjustment:', error.message, error.stack);
-    return res.status(500).json({
-      success: false,
-      message: 'حدث خطأ أثناء التعديل',
-      error: error.message,
-      data: null,
-    });
   }
 });
 
@@ -909,7 +873,7 @@ router.delete('/advances/:employeeCode', authenticateToken, async (req, res) => 
     await user.save();
     await SalaryAdjustment.updateMany(
       { employeeCode },
-      { $set: { totalAdvances: 0, deductionAdvancesInstallment: 0, remainingAdvances: 0 } }
+      { $set: { totalAdvances: 0, deductionAdvancesInstallment: 0, remainingAdvances: 0, penalties: 0 } } // إضافة حقل الجزاءات
     );
     res.json({
       success: true,

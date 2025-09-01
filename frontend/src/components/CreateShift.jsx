@@ -11,14 +11,39 @@ const dayMap = {
   'السبت': 6,
 };
 
+const CustomCheckIcon = () => (
+  <motion.div
+    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+  >
+    <motion.svg
+      className="h-full w-full text-purple-600"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </motion.svg>
+  </motion.div>
+);
+
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1, transition: { duration: 0.4 } }}
-    exit={{ opacity: 0, transition: { duration: 0.4 } }}
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
-    <div className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+    <motion.div
+      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+    />
     <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
@@ -41,6 +66,7 @@ function CreateShift() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const calculateOvertimeEndTime = () => {
     if ((shiftType === 'morning' || shiftType === 'evening') && endTime && maxOvertimeHours) {
@@ -92,6 +118,7 @@ function CreateShift() {
     setLoading(true);
     setError('');
     setSuccessMessage('');
+    setShowSuccessAnimation(false);
     try {
       if (Number(baseHours) <= 0) {
         setError('الساعات الأساسية يجب أن تكون قيمة إيجابية');
@@ -175,20 +202,24 @@ function CreateShift() {
       const data = await response.json();
       if (data.success) {
         setSuccessMessage('تم إنشاء الشيفت بنجاح');
-        setShiftType('morning');
-        setShiftName('');
-        setBaseHours('');
-        setStartTime('');
-        setEndTime('');
-        setMaxOvertimeHours('');
-        setWorkDays([]);
-        setGracePeriod('');
-        setDeductions([]);
-        setSickLeaveDeduction('');
-        setOvertimeBasis('basicSalary');
-        setOvertimeMultiplier('1');
-        setFridayOvertimeBasis('basicSalary');
-        setFridayOvertimeMultiplier('1');
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+          setShiftType('morning');
+          setShiftName('');
+          setBaseHours('');
+          setStartTime('');
+          setEndTime('');
+          setMaxOvertimeHours('');
+          setWorkDays([]);
+          setGracePeriod('');
+          setDeductions([]);
+          setSickLeaveDeduction('');
+          setOvertimeBasis('basicSalary');
+          setOvertimeMultiplier('1');
+          setFridayOvertimeBasis('basicSalary');
+          setFridayOvertimeMultiplier('1');
+        }, 1000);
       } else {
         setError('حدث خطأ أثناء إنشاء الشيفت');
       }
@@ -200,54 +231,66 @@ function CreateShift() {
   };
 
   const formVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 50, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.03, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.2)', transition: { duration: 0.3 } },
-    tap: { scale: 0.98, backgroundColor: '#A78BFA', transition: { duration: 0.3 } },
+    hover: {
+      scale: 1.02,
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      backgroundColor: '#7C3AED',
+      transition: { duration: 0.3, ease: 'easeInOut' },
+    },
+    tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-4 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="container mx-auto relative z-10 max-w-7xl bg-white rounded-3xl shadow-lg p-6 md:p-8 border border-purple-100 backdrop-blur-sm bg-opacity-90"
+        className="container mx-auto max-w-7xl bg-white rounded-xl shadow-lg p-6 sm:p-8 md:p-10 border border-gray-200/50 backdrop-blur-sm"
       >
-        <h2 className="text-3xl font-extrabold text-purple-600 mb-6 text-right tracking-wide drop-shadow-sm">
-          إنشاء شيفت جديد
+        <div className="flex justify-center mb-6">
+          <img
+            src="http://www.nilemix.com/wp-content/uploads/2016/05/logo.png"
+            alt="NileMix Logo"
+            className="h-16 sm:h-20"
+          />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 text-center tracking-tight">
+          NileMix HR System - إنشاء شيفت جديد
         </h2>
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="bg-red-50 border border-red-300 text-red-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {error}
             </motion.div>
           )}
-          {successMessage && (
+          {successMessage && !loading && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-purple-50 border border-purple-200 text-purple-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="bg-purple-50 border border-purple-300 text-purple-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {successMessage}
             </motion.div>
           )}
         </AnimatePresence>
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md p-6 border border-purple-100 backdrop-blur-sm bg-opacity-90">
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                نوع الشيفت
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">نوع الشيفت</label>
               <select
                 value={shiftType}
                 onChange={(e) => {
@@ -257,7 +300,7 @@ function CreateShift() {
                   setBaseHours('');
                   setDeductions([]);
                 }}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 required
               >
                 <option value="morning">صباحي</option>
@@ -266,94 +309,80 @@ function CreateShift() {
               </select>
             </div>
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                اسم الشيفت
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">اسم الشيفت</label>
               <input
                 type="text"
                 value={shiftName}
                 onChange={(e) => setShiftName(e.target.value)}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 required
               />
             </div>
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                الساعات الأساسية
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الساعات الأساسية</label>
               <input
                 type="number"
                 value={baseHours}
                 onChange={(e) => setBaseHours(e.target.value)}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 required
               />
             </div>
             {(shiftType === 'morning' || shiftType === 'evening') && (
               <>
                 <div>
-                  <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                    وقت بداية الشيفت
-                  </label>
+                  <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">وقت بداية الشيفت</label>
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                    وقت نهاية الشيفت
-                  </label>
+                  <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">وقت نهاية الشيفت</label>
                   <input
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                     required
                   />
                 </div>
               </>
             )}
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                الحد الأقصى للساعات الإضافية
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الحد الأقصى للساعات الإضافية</label>
               <input
                 type="number"
                 value={maxOvertimeHours}
                 onChange={(e) => setMaxOvertimeHours(e.target.value)}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 placeholder={shiftType === '24/24' ? 'مطلوب' : 'اختياري'}
                 required={shiftType === '24/24'}
               />
             </div>
             {(shiftType === 'morning' || shiftType === 'evening') && maxOvertimeHours && (
               <div>
-                <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                  وقت نهاية الشيفت الإضافي
-                </label>
+                <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">وقت نهاية الشيفت الإضافي</label>
                 <input
                   type="text"
                   value={calculateOvertimeEndTime()}
                   readOnly
-                  className="w-full p-3 border border-purple-200 rounded-2xl bg-gray-100 text-sm shadow-sm"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 />
               </div>
             )}
             {shiftType === '24/24' && Number(baseHours) + Number(maxOvertimeHours) > 24 && (
               <div className="col-span-1 md:col-span-2">
-                <p className="text-gray-500 text-xs text-right">
+                <p className="text-gray-600 text-sm text-right">
                   ملاحظة: مجموع الساعات الأساسية والإضافية ({Number(baseHours) + Number(maxOvertimeHours)} ساعة) يتجاوز 24 ساعة، لذا قد يمتد الشيفت عبر يومين.
                 </p>
               </div>
             )}
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                أيام العمل
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">أيام العمل</label>
               <div className="grid grid-cols-2 gap-4">
                 {['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((day) => (
                   <label key={day} className="flex items-center space-x-2 space-x-reverse">
@@ -361,31 +390,29 @@ function CreateShift() {
                       type="checkbox"
                       value={day}
                       onChange={handleWorkDaysChange}
-                      className="form-checkbox h-5 w-5 text-purple-500 focus:ring-purple-500"
+                      className="h-5 w-5 text-purple-600 focus:ring-purple-600 border-gray-300 rounded"
                     />
-                    <span className="text-sm text-gray-600">{day}</span>
+                    <span className="text-sm text-gray-800">{day}</span>
                   </label>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                فترة السماح (بالدقائق)
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">فترة السماح (بالدقائق)</label>
               <input
                 type="number"
                 value={gracePeriod}
                 onChange={(e) => setGracePeriod(e.target.value)}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 required
               />
             </div>
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">
                 {shiftType === '24/24' ? 'خصومات الخروج المبكر' : 'خصومات التأخير'}
               </label>
               {shiftType === '24/24' && (
-                <p className="text-gray-500 text-xs text-right mb-2">
+                <p className="text-gray-600 text-sm text-right mb-2">
                   أدخل مدة الوقت الناقص عن الساعات الأساسية ومقدار الخصم بالدقائق (مثال: إذا خرج بعد 8 ساعات، أدخل 60 دقيقة ناقصة و60 دقيقة خصم).
                 </p>
               )}
@@ -397,7 +424,7 @@ function CreateShift() {
                         type="time"
                         value={deduction.start}
                         onChange={(e) => updateDeduction(index, 'start', e.target.value)}
-                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        className="w-full sm:w-1/3 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         placeholder="من (الوقت)"
                         required
                       />
@@ -405,7 +432,7 @@ function CreateShift() {
                         type="time"
                         value={deduction.end}
                         onChange={(e) => updateDeduction(index, 'end', e.target.value)}
-                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        className="w-full sm:w-1/3 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         placeholder="إلى (الوقت)"
                         required
                       />
@@ -416,7 +443,7 @@ function CreateShift() {
                         type="number"
                         value={deduction.duration}
                         onChange={(e) => updateDeduction(index, 'duration', e.target.value)}
-                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        className="w-full sm:w-1/3 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         placeholder="مدة النقص (دقائق)"
                         required
                       />
@@ -424,7 +451,7 @@ function CreateShift() {
                         type="number"
                         value={deduction.deductionAmount}
                         onChange={(e) => updateDeduction(index, 'deductionAmount', e.target.value)}
-                        className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                        className="w-full sm:w-1/3 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         placeholder="مقدار الخصم (دقائق)"
                         required
                       />
@@ -433,7 +460,7 @@ function CreateShift() {
                   <select
                     value={deduction.type}
                     onChange={(e) => updateDeduction(index, 'type', e.target.value)}
-                    className="w-full sm:w-1/3 p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                    className="w-full sm:w-1/3 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                     required
                   >
                     <option value="">اختر نوع الخصم</option>
@@ -448,7 +475,7 @@ function CreateShift() {
                     whileTap="tap"
                     type="button"
                     onClick={() => removeDeduction(index)}
-                    className="w-full sm:w-auto bg-red-600 text-white p-3 rounded-2xl hover:bg-red-700 transition duration-300 font-medium text-sm shadow-sm"
+                    className="w-full sm:w-auto bg-red-600 text-white p-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-md"
                   >
                     حذف
                   </motion.button>
@@ -460,19 +487,17 @@ function CreateShift() {
                 whileTap="tap"
                 type="button"
                 onClick={addDeduction}
-                className="mt-2 w-full sm:w-auto bg-green-600 text-white p-3 rounded-2xl hover:bg-green-700 transition duration-300 font-medium text-sm shadow-sm"
+                className="mt-2 w-full sm:w-auto bg-purple-600 text-white p-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-md"
               >
                 إضافة خصم جديد
               </motion.button>
             </div>
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                خصم الإجازة المرضية
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">خصم الإجازة المرضية</label>
               <select
                 value={sickLeaveDeduction}
                 onChange={(e) => setSickLeaveDeduction(e.target.value)}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               >
                 <option value="">اختر</option>
                 <option value="none">بدون خصم</option>
@@ -482,14 +507,12 @@ function CreateShift() {
               </select>
             </div>
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                حساب الساعات الإضافية
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">حساب الساعات الإضافية</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <select
                   value={overtimeBasis}
                   onChange={(e) => setOvertimeBasis(e.target.value)}
-                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 >
                   <option value="basicSalary">الراتب الأساسي</option>
                   <option value="totalSalaryWithAllowances">الراتب الإجمالي بالبدلات</option>
@@ -497,7 +520,7 @@ function CreateShift() {
                 <select
                   value={overtimeMultiplier}
                   onChange={(e) => setOvertimeMultiplier(e.target.value)}
-                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 >
                   <option value="2">ساعة بساعتين</option>
                   <option value="1">ساعة</option>
@@ -506,14 +529,12 @@ function CreateShift() {
               </div>
             </div>
             <div className="col-span-1 md:col-span-2">
-              <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-                حساب الساعات الإضافية يوم الجمعة
-              </label>
+              <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">حساب الساعات الإضافية يوم الجمعة</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <select
                   value={fridayOvertimeBasis}
                   onChange={(e) => setFridayOvertimeBasis(e.target.value)}
-                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 >
                   <option value="basicSalary">الراتب الأساسي</option>
                   <option value="totalSalaryWithAllowances">الراتب الإجمالي بالبدلات</option>
@@ -521,7 +542,7 @@ function CreateShift() {
                 <select
                   value={fridayOvertimeMultiplier}
                   onChange={(e) => setFridayOvertimeMultiplier(e.target.value)}
-                  className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 >
                   <option value="1">ساعة</option>
                   <option value="1.5">ساعة ونص</option>
@@ -535,12 +556,25 @@ function CreateShift() {
             whileHover="hover"
             whileTap="tap"
             type="submit"
-            className="mt-6 w-full bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 font-medium text-sm shadow-md"
+            className="mt-6 w-full bg-purple-600 text-white py-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-md disabled:bg-purple-400"
             disabled={loading}
           >
             {loading ? <CustomLoadingSpinner /> : 'إنشاء الشيفت'}
           </motion.button>
         </form>
+        <AnimatePresence>
+          {showSuccessAnimation && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
+            >
+              <CustomCheckIcon />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

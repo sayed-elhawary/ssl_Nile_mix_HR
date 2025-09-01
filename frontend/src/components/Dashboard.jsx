@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Custom Check Icon
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-12 w-12"
+    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
     initial={{ scale: 0, opacity: 0 }}
     animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
     exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-500"
+      className="h-full w-full text-purple-600"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -28,23 +28,23 @@ const CustomCheckIcon = () => (
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } }}
-    exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <motion.div
-      className="h-8 w-8 border-3 border-purple-500 border-t-transparent rounded-full"
+      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
-      transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="mr-2 text-purple-500 text-sm font-medium">جارٍ التحميل...</span>
+    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
 // Custom SVG Icons
 const ShiftIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -56,7 +56,7 @@ const ShiftIcon = () => (
 
 const UserPlusIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -69,7 +69,7 @@ const UserPlusIcon = () => (
 
 const UserEditIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -82,7 +82,7 @@ const UserEditIcon = () => (
 
 const SettingsIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -94,7 +94,7 @@ const SettingsIcon = () => (
 
 const UploadIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -107,7 +107,7 @@ const UploadIcon = () => (
 
 const ReportIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -122,7 +122,7 @@ const ReportIcon = () => (
 
 const ViolationIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -135,11 +135,11 @@ const ViolationIcon = () => (
 
 const AdvanceIcon = () => (
   <motion.div
-    className="h-6 w-6 text-purple-500"
+    className="h-6 w-6 text-purple-600"
     whileHover={{ scale: 1.3, rotate: 10, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2v20m10-10H2" />
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   </motion.div>
 );
@@ -176,26 +176,39 @@ function Dashboard({ socket }) {
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
     visible: (i) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.5, ease: 'easeOut', type: 'spring', stiffness: 100 },
+      scale: 1,
+      transition: { delay: i * 0.1, duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 },
     }),
     hover: {
-      scale: 1.05,
-      boxShadow: '0 10px 20px rgba(0, 0, 0, 0.2)',
+      scale: 1.02,
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      backgroundColor: '#f9fafb',
       transition: { duration: 0.3, ease: 'easeInOut' },
     },
     tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 sm:mb-8 text-right tracking-tight">
-          لوحة التحكم
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+      <div className="container mx-auto max-w-7xl">
+        <div className="flex justify-center mb-6">
+          <img
+            src="http://www.nilemix.com/wp-content/uploads/2016/05/logo.png"
+            alt="NileMix Logo"
+            className="h-16 sm:h-20"
+          />
+        </div>
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } }}
+          className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 sm:mb-8 text-center tracking-tight"
+        >
+          NileMix HR System - لوحة التحكم
+        </motion.h1>
         <AnimatePresence>
           {error && (
             <motion.div
@@ -210,9 +223,14 @@ function Dashboard({ socket }) {
           )}
         </AnimatePresence>
         {loading ? (
-          <div className="flex justify-center items-center h-64">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex justify-center items-center h-64"
+          >
             <CustomLoadingSpinner />
-          </div>
+          </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {menuItems[userRole].map((item, index) => (
@@ -224,12 +242,12 @@ function Dashboard({ socket }) {
                   whileHover="hover"
                   whileTap="tap"
                   custom={index}
-                  className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 flex items-center space-x-4 space-x-reverse border border-gray-200/50"
+                  className="bg-white p-6 rounded-2xl shadow-md transition-shadow duration-300 flex items-center space-x-4 space-x-reverse border border-gray-200/50 backdrop-blur-sm"
                 >
                   <div className="flex-shrink-0">{item.icon}</div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">{item.label}</h2>
-                    <p className="text-sm text-gray-500">انقر للانتقال إلى {item.label}</p>
+                    <p className="text-sm text-gray-600">انقر للانتقال إلى {item.label}</p>
                   </div>
                 </motion.div>
               </Link>

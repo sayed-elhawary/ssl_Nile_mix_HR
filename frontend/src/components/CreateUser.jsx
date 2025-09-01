@@ -2,28 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CustomCheckIcon = () => (
-  <motion.svg
-    className="h-12 w-12 text-green-600"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
+  <motion.div
+    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.8, ease: 'easeInOut' } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4 } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
   >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-  </motion.svg>
+    <motion.svg
+      className="h-full w-full text-purple-600"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </motion.svg>
+  </motion.div>
 );
 
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1, transition: { duration: 0.4 } }}
-    exit={{ opacity: 0, transition: { duration: 0.4 } }}
+    initial={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeInOut' } }}
   >
-    <div className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+    <motion.div
+      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+    />
     <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
@@ -86,11 +96,12 @@ function CreateUser() {
     setLoading(true);
     setError('');
     setSuccessMessage('');
+    setShowSuccessAnimation(false);
     try {
-      const netSalary = parseFloat(totalSalaryWithAllowances) + 
-        (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) + 
-        parseFloat(mealAllowance) - 
-        parseFloat(medicalInsurance) - 
+      const netSalary = parseFloat(totalSalaryWithAllowances) +
+        (parseFloat(basicBonus) * parseFloat(bonusPercentage) / 100) +
+        parseFloat(mealAllowance) -
+        parseFloat(medicalInsurance) -
         parseFloat(socialInsurance);
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/user/create`, {
         method: 'POST',
@@ -118,23 +129,25 @@ function CreateUser() {
       });
       const data = await response.json();
       if (data.success) {
-        setShowSuccessAnimation(true);
         setSuccessMessage('تم إنشاء الحساب بنجاح');
-        setTimeout(() => setShowSuccessAnimation(false), 1500);
-        setEmployeeCode('');
-        setPassword('');
-        setName('');
-        setDepartment('');
-        setTotalSalaryWithAllowances('');
-        setBasicSalary('');
-        setBasicBonus('');
-        setBonusPercentage('');
-        setMedicalInsurance('');
-        setSocialInsurance('');
-        setMealAllowance('');
-        setShiftType('');
-        setWorkDays('');
-        setAnnualLeaveBalance('');
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+          setEmployeeCode('');
+          setPassword('');
+          setName('');
+          setDepartment('');
+          setTotalSalaryWithAllowances('');
+          setBasicSalary('');
+          setBasicBonus('');
+          setBonusPercentage('');
+          setMedicalInsurance('');
+          setSocialInsurance('');
+          setMealAllowance('');
+          setShiftType('');
+          setWorkDays('');
+          setAnnualLeaveBalance('');
+        }, 1000);
       } else {
         setError(data.message || 'حدث خطأ أثناء إنشاء الحساب');
       }
@@ -146,13 +159,18 @@ function CreateUser() {
   };
 
   const formVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 50, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.03, boxShadow: '0 6px 20px rgba(139, 92, 246, 0.2)', transition: { duration: 0.3 } },
-    tap: { scale: 0.98, backgroundColor: '#A78BFA', transition: { duration: 0.3 } },
+    hover: {
+      scale: 1.02,
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      backgroundColor: '#7C3AED',
+      transition: { duration: 0.3, ease: 'easeInOut' },
+    },
+    tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   const getShiftIcon = (type) => {
@@ -191,180 +209,165 @@ function CreateUser() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-4 md:p-8 font-noto-sans-arabic relative dir=rtl overflow-auto" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="container mx-auto relative z-10 max-w-7xl bg-white rounded-3xl shadow-lg p-6 md:p-8 border border-purple-100 backdrop-blur-sm bg-opacity-90"
+        className="container mx-auto max-w-7xl bg-white rounded-xl shadow-lg p-6 sm:p-8 md:p-10 border border-gray-200/50 backdrop-blur-sm"
       >
-        <h2 className="text-3xl font-extrabold text-purple-600 mb-6 text-right tracking-wide drop-shadow-sm">
-          إنشاء حساب جديد
+        <div className="flex justify-center mb-6">
+          <img
+            src="http://www.nilemix.com/wp-content/uploads/2016/05/logo.png"
+            alt="NileMix Logo"
+            className="h-16 sm:h-20"
+          />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 text-center tracking-tight">
+          NileMix HR System - إنشاء حساب جديد
         </h2>
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="bg-red-50 border border-red-300 text-red-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {error}
             </motion.div>
           )}
-          {successMessage && (
+          {successMessage && !loading && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-purple-50 border border-purple-200 text-purple-600 px-4 py-3 rounded-xl mb-6 text-right text-sm shadow-sm"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="bg-purple-50 border border-purple-300 text-purple-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {successMessage}
             </motion.div>
           )}
         </AnimatePresence>
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-md p-6 border border-purple-100 backdrop-blur-sm bg-opacity-90 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              كود الموظف
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">كود الموظف</label>
             <input
               type="text"
               value={employeeCode}
               onChange={(e) => setEmployeeCode(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              كلمة المرور
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">كلمة المرور</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              الاسم
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الاسم</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              القسم
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">القسم</label>
             <input
               type="text"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              إجمالي الراتب بالبدلات
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">إجمالي الراتب بالبدلات</label>
             <input
               type="number"
               value={totalSalaryWithAllowances}
               onChange={(e) => setTotalSalaryWithAllowances(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              الراتب الأساسي
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الراتب الأساسي</label>
             <input
               type="number"
               value={basicSalary}
               onChange={(e) => setBasicSalary(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              الحافز الأساسي
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">الحافز الأساسي</label>
             <input
               type="number"
               value={basicBonus}
               onChange={(e) => setBasicBonus(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              نسبة الحافز (%)
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">نسبة الحافز (%)</label>
             <input
               type="number"
               value={bonusPercentage}
               onChange={(e) => setBonusPercentage(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              التأمين الطبي
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">التأمين الطبي</label>
             <input
               type="number"
               value={medicalInsurance}
               onChange={(e) => setMedicalInsurance(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              التأمين الاجتماعي
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">التأمين الاجتماعي</label>
             <input
               type="number"
               value={socialInsurance}
               onChange={(e) => setSocialInsurance(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              بدل الوجبة
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">بدل الوجبة</label>
             <input
               type="number"
               value={mealAllowance}
               onChange={(e) => setMealAllowance(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              نوع الشيفت
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">نوع الشيفت</label>
             <div className="flex items-center">
               <select
                 value={shiftType}
                 onChange={handleShiftChange}
-                className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                 required
               >
                 <option value="">اختر الشيفت</option>
@@ -378,25 +381,21 @@ function CreateUser() {
             </div>
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              عدد أيام العمل
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">عدد أيام العمل</label>
             <input
               type="text"
               value={workDays}
               readOnly
-              className="w-full p-3 border border-purple-200 rounded-2xl bg-gray-100 text-gray-600 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl bg-gray-100 text-gray-600 text-sm shadow-sm text-right"
             />
           </div>
           <div>
-            <label className="block text-gray-600 text-sm font-medium mb-2 text-right">
-              رصيد الإجازة السنوية
-            </label>
+            <label className="block text-gray-800 text-sm font-semibold mb-2 text-right">رصيد الإجازة السنوية</label>
             <input
               type="number"
               value={annualLeaveBalance}
               onChange={(e) => setAnnualLeaveBalance(e.target.value)}
-              className="w-full p-3 border border-purple-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow bg-purple-50 text-sm shadow-sm"
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
               required
             />
           </div>
@@ -406,7 +405,7 @@ function CreateUser() {
               whileHover="hover"
               whileTap="tap"
               type="submit"
-              className="w-full bg-purple-600 text-white p-3 rounded-2xl hover:bg-purple-700 transition duration-300 font-medium text-sm shadow-md"
+              className="mt-6 w-full bg-purple-600 text-white py-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-md disabled:bg-purple-400"
               disabled={loading}
             >
               {loading ? <CustomLoadingSpinner /> : 'إنشاء الحساب'}
@@ -416,10 +415,11 @@ function CreateUser() {
         <AnimatePresence>
           {showSuccessAnimation && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
+              initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
             >
               <CustomCheckIcon />
             </motion.div>

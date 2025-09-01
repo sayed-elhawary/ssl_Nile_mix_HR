@@ -4,19 +4,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
+    className="relative h-16 w-16 bg-white p-4 rounded-full shadow-lg"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeOut' } }}
   >
     <motion.svg
-      className="h-full w-full text-purple-500"
+      className="h-full w-full text-green-500"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={2.5}
       initial={{ pathLength: 0 }}
-      animate={{ pathLength: 1, transition: { duration: 0.6, ease: 'easeOut' } }}
+      animate={{ pathLength: 1, transition: { duration: 0.8, ease: 'easeOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
@@ -65,12 +65,12 @@ function Login({ setIsAuthenticated, setUserRole }) {
         localStorage.setItem('role', data.user.role);
         setIsAuthenticated(true);
         setUserRole(data.user.role);
-        setShowSuccessAnimation(true);
         setSuccessMessage('تم تسجيل الدخول بنجاح');
+        setShowSuccessAnimation(true);
         setTimeout(() => {
           setShowSuccessAnimation(false);
           navigate('/dashboard');
-        }, 1000);
+        }, 1500);
       } else {
         setError('كود الموظف أو كلمة المرور غير صحيحة');
       }
@@ -83,41 +83,55 @@ function Login({ setIsAuthenticated, setUserRole }) {
 
   const formVariants = {
     hidden: { opacity: 0, y: 50, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.8,
+        ease: 'easeOut',
+        type: 'spring',
+        stiffness: 120,
+        damping: 15,
+      },
+    },
   };
 
   const inputVariants = {
     hover: {
       scale: 1.03,
-      borderColor: '#6B46C1',
-      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
-      transition: { duration: 0.4, ease: 'easeInOut' },
+      borderColor: '#7C3AED',
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+      transition: { duration: 0.3, ease: 'easeInOut' },
     },
     focus: {
       scale: 1.03,
-      borderColor: '#6B46C1',
-      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
-      transition: { duration: 0.4, ease: 'easeInOut' },
+      borderColor: '#7C3AED',
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+      transition: { duration: 0.3, ease: 'easeInOut' },
     },
   };
 
   const buttonVariants = {
     hover: {
       scale: 1.05,
-      boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
-      backgroundColor: '#6B46C1',
-      transition: { duration: 0.4, ease: 'easeInOut' },
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+      backgroundColor: '#7C3AED',
+      transition: { duration: 0.3, ease: 'easeInOut' },
     },
     tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
+    <div
+      className="min-h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-purple-800 flex items-center justify-center p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl"
+      style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}
+    >
       <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 md:p-10 max-w-md w-full border border-gray-200/50 backdrop-blur-sm"
+        className="bg-white/95 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10 max-w-md w-full border border-gray-200/30 backdrop-blur-lg"
       >
         <div className="flex justify-center mb-6">
           <img
@@ -147,7 +161,7 @@ function Login({ setIsAuthenticated, setUserRole }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="bg-purple-50 border border-purple-300 text-purple-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
+              className="bg-green-50 border border-green-300 text-green-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
             >
               {successMessage}
             </motion.div>
@@ -200,8 +214,8 @@ function Login({ setIsAuthenticated, setUserRole }) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="fixed inset-0 flex items-center justify-center z-50 bg-black/60"
             >
               <CustomCheckIcon />
             </motion.div>

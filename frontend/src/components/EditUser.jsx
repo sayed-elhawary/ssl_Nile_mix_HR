@@ -4,43 +4,38 @@ import { Search, Percent, DollarSign, Utensils, Shield, Briefcase, Calendar, Edi
 
 const CustomCheckIcon = () => (
   <motion.div
-    className="relative h-12 w-12 sm:h-16 sm:w-16"
+    className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
     initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1, transition: { duration: 0.6, ease: 'easeInOut', type: 'spring', stiffness: 150, damping: 12 } }}
-    exit={{ scale: 0, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
+    animate={{ scale: 1, opacity: 1, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    exit={{ scale: 0, opacity: 0, transition: { duration: 0.2, ease: 'easeInOut' } }}
   >
     <motion.svg
       className="h-full w-full text-purple-600"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={3}
-      initial={{ pathLength: 0, rotate: -45 }}
-      animate={{ pathLength: 1, rotate: 0, transition: { duration: 0.8, ease: 'easeInOut' } }}
+      strokeWidth={2}
+      initial={{ pathLength: 0 }}
+      animate={{ pathLength: 1, transition: { duration: 0.4, ease: 'easeInOut' } }}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </motion.svg>
-    <motion.div
-      className="absolute inset-0 rounded-full bg-purple-100 opacity-40"
-      initial={{ scale: 0 }}
-      animate={{ scale: 1.8, opacity: 0, transition: { duration: 1.2, ease: 'easeOut' } }}
-    />
   </motion.div>
 );
 
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
-    initial={{ opacity: 0, scale: 0.8 }}
-    animate={{ opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeIn' } }}
-    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4, ease: 'easeOut' } }}
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1, transition: { duration: 0.4, ease: 'easeInOut' } }}
+    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2, ease: 'easeInOut' } }}
   >
     <motion.div
-      className="h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-600 border-t-transparent rounded-full"
+      className="h-10 w-10 border-4 border-purple-600 border-t-transparent rounded-full"
       animate={{ rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
     />
-    <span className="mr-2 sm:mr-3 text-purple-600 text-xs sm:text-sm font-medium">جارٍ التحميل...</span>
+    <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
 
@@ -354,7 +349,7 @@ function EditUser() {
       setTimeout(() => {
         setShowSuccessAnimation(false);
         setSuccessMessage('');
-      }, 2000);
+      }, 1000);
       closeModal();
     } catch (err) {
       console.error('خطأ في تحديث البيانات:', err);
@@ -390,7 +385,7 @@ function EditUser() {
       setTimeout(() => {
         setShowSuccessAnimation(false);
         setSuccessMessage('');
-      }, 2000);
+      }, 1000);
       closeDeleteConfirm();
     } catch (err) {
       console.error('خطأ في حذف الموظف:', err);
@@ -415,28 +410,41 @@ function EditUser() {
   };
 
   const buttonVariants = {
-    hover: { scale: 1.05, boxShadow: '0 6px 25px rgba(139, 92, 246, 0.3)', transition: { duration: 0.3, ease: 'easeInOut' } },
-    tap: { scale: 0.95, backgroundColor: '#A78BFA', transition: { duration: 0.3, ease: 'easeInOut' } },
+    hover: {
+      scale: 1.02,
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      transition: { duration: 0.2, ease: 'easeInOut' },
+    },
+    tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeInOut' } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-purple-50 to-blue-100 p-2 sm:p-4 md:p-6 font-noto-sans-arabic relative overflow-hidden dir=rtl" style={{ scrollBehavior: 'smooth' }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <div className="container mx-auto max-w-7xl">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="bg-white rounded-2xl shadow-md p-4 sm:p-6 border border-gray-100"
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, ease: 'easeInOut', type: 'spring', stiffness: 100, damping: 15 }}
+          className="bg-white rounded-xl shadow-lg p-6 sm:p-8 md:p-10 border border-gray-200/50 backdrop-blur-sm"
         >
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 mb-4 sm:mb-6 text-right tracking-wide drop-shadow-sm">تعديل حساب</h2>
+          <div className="flex justify-center mb-6">
+            <img
+              src="http://www.nilemix.com/wp-content/uploads/2016/05/logo.png"
+              alt="NileMix Logo"
+              className="h-16 sm:h-20"
+            />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 text-center tracking-tight">
+            NileMix HR System - تعديل حساب
+          </h2>
           <AnimatePresence>
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="bg-red-100 text-red-700 p-2 sm:p-3 rounded-xl mb-4 sm:mb-6 text-right text-xs sm:text-sm font-semibold shadow-sm"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="bg-red-50 border border-red-300 text-red-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
               >
                 {error}
               </motion.div>
@@ -446,35 +454,35 @@ function EditUser() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="bg-purple-50 text-purple-600 p-2 sm:p-3 rounded-xl mb-4 sm:mb-6 text-right text-xs sm:text-sm font-semibold shadow-sm"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="bg-purple-50 border border-purple-300 text-purple-700 p-3 rounded-xl mb-4 text-sm text-center shadow-sm"
               >
                 {successMessage}
               </motion.div>
             )}
           </AnimatePresence>
           {loading && (
-            <div className="flex justify-center mb-4 sm:mb-6">
+            <div className="flex justify-center mb-6">
               <CustomLoadingSpinner />
             </div>
           )}
           {!loading && users.length > 0 && (
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-6">
               <div className="relative max-w-full sm:max-w-md mx-auto">
-                <Search className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-purple-600" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="ابحث بكود الموظف أو الاسم"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 pr-8 sm:pr-10 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                  className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                   disabled={loading}
                 />
               </div>
             </div>
           )}
           {!loading && users.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 max-w-5xl mx-auto">
               {[
                 { type: 'percentageIncreaseTotal', label: 'زيادة نسبة على الراتب الإجمالي', icon: Percent },
                 { type: 'percentageIncreaseBasic', label: 'زيادة نسبة على الراتب الأساسي', icon: Percent },
@@ -491,34 +499,34 @@ function EditUser() {
                   whileHover="hover"
                   whileTap="tap"
                   onClick={() => openModal(type)}
-                  className="flex items-center justify-center space-x-2 space-x-reverse bg-purple-600 text-white px-2 sm:px-3 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 text-xs sm:text-sm font-semibold shadow-md w-full text-center"
+                  className="flex items-center justify-center space-x-2 space-x-reverse bg-purple-600 text-white px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold shadow-sm"
                   disabled={loading}
                 >
-                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Icon className="h-5 w-5" />
                   <span className="truncate">{label}</span>
                 </motion.button>
               ))}
             </div>
           )}
           {!loading && users.length > 0 ? (
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-x-auto lg:overflow-x-visible max-w-full">
-              <table className="w-full text-right text-xs sm:text-sm table-auto">
+            <div className="bg-white rounded-xl shadow-md border border-gray-200/50 overflow-x-auto">
+              <table className="w-full text-right text-sm table-auto">
                 <thead>
-                  <tr className="bg-purple-50">
-                    <th className="p-2 sm:p-3 w-[4%] min-w-[40px] font-semibold text-purple-600">استثناء</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">كود الموظف</th>
-                    <th className="p-2 sm:p-3 w-[9%] min-w-[70px] font-semibold text-purple-600">الاسم</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">القسم</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">الشيفت</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">الراتب الإجمالي</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">الراتب الأساسي</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">الحافز الأساسي</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">نسبة الحافز</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">بدل الوجبة</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">التأمين الطبي</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">التأمين الاجتماعي</th>
-                    <th className="p-2 sm:p-3 w-[7%] min-w-[50px] font-semibold text-purple-600">رصيد الإجازة</th>
-                    <th className="p-2 sm:p-3 w-[10%] min-w-[90px] font-semibold text-purple-600">إجراءات</th>
+                  <tr className="bg-gray-50">
+                    <th className="p-3 w-[4%] min-w-[40px] font-semibold text-gray-900">استثناء</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">كود الموظف</th>
+                    <th className="p-3 w-[9%] min-w-[70px] font-semibold text-gray-900">الاسم</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">القسم</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">الشيفت</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">الراتب الإجمالي</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">الراتب الأساسي</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">الحافز الأساسي</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">نسبة الحافز</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">بدل الوجبة</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">التأمين الطبي</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">التأمين الاجتماعي</th>
+                    <th className="p-3 w-[7%] min-w-[50px] font-semibold text-gray-900">رصيد الإجازة</th>
+                    <th className="p-3 w-[10%] min-w-[90px] font-semibold text-gray-900">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -527,38 +535,38 @@ function EditUser() {
                       key={user._id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="border-b border-purple-100 hover:bg-purple-50"
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="border-b border-gray-200"
                     >
-                      <td className="p-2 sm:p-3">
+                      <td className="p-3">
                         <input
                           type="checkbox"
                           checked={excludedUsers.includes(user._id)}
                           onChange={() => handleExcludeToggle(user._id)}
-                          className="h-4 w-4 text-purple-600 focus:ring-purple-500 rounded"
+                          className="h-4 w-4 text-purple-600 focus:ring-purple-600 rounded"
                         />
                       </td>
-                      <td className="p-2 sm:p-3">{user.employeeCode}</td>
-                      <td className="p-2 sm:p-3">{user.name}</td>
-                      <td className="p-2 sm:p-3">{user.department}</td>
-                      <td className="p-2 sm:p-3">{user.shiftType?.shiftName || 'غير محدد'}</td>
-                      <td className="p-2 sm:p-3">{(user.totalSalaryWithAllowances ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{(user.basicSalary ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{(user.basicBonus ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{(user.bonusPercentage ?? 0).toFixed(2)}%</td>
-                      <td className="p-2 sm:p-3">{(user.mealAllowance ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{(user.medicalInsurance ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{(user.socialInsurance ?? 0).toFixed(2)}</td>
-                      <td className="p-2 sm:p-3">{user.annualLeaveBalance ?? 0}</td>
-                      <td className="p-2 sm:p-3 flex space-x-1 space-x-reverse items-center">
+                      <td className="p-3">{user.employeeCode}</td>
+                      <td className="p-3">{user.name}</td>
+                      <td className="p-3">{user.department}</td>
+                      <td className="p-3">{user.shiftType?.shiftName || 'غير محدد'}</td>
+                      <td className="p-3">{(user.totalSalaryWithAllowances ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{(user.basicSalary ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{(user.basicBonus ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{(user.bonusPercentage ?? 0).toFixed(2)}%</td>
+                      <td className="p-3">{(user.mealAllowance ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{(user.medicalInsurance ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{(user.socialInsurance ?? 0).toFixed(2)}</td>
+                      <td className="p-3">{user.annualLeaveBalance ?? 0}</td>
+                      <td className="p-3 flex space-x-1 space-x-reverse items-center">
                         <motion.button
                           variants={buttonVariants}
                           whileHover="hover"
                           whileTap="tap"
                           onClick={() => openModal('edit', user._id, user)}
-                          className="bg-purple-600 text-white px-1 sm:px-2 py-1 rounded-lg hover:bg-purple-700 transition-all duration-300 text-xs font-semibold shadow-sm flex-1 min-w-[40px]"
+                          className="bg-purple-600 text-white px-2 py-1 rounded-xl transition-all duration-200 text-sm font-semibold shadow-sm flex-1 min-w-[40px]"
                         >
-                          <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 inline-block ml-1" />
+                          <Edit2 className="h-4 w-4 inline-block ml-1" />
                           تعديل
                         </motion.button>
                         <motion.button
@@ -566,9 +574,9 @@ function EditUser() {
                           whileHover="hover"
                           whileTap="tap"
                           onClick={() => openDeleteConfirm(user._id, user.name)}
-                          className="bg-red-600 text-white px-1 sm:px-2 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-xs font-semibold shadow-sm flex-1 min-w-[40px]"
+                          className="bg-red-600 text-white px-2 py-1 rounded-xl transition-all duration-200 text-sm font-semibold shadow-sm flex-1 min-w-[40px]"
                         >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 inline-block ml-1" />
+                          <Trash2 className="h-4 w-4 inline-block ml-1" />
                           حذف
                         </motion.button>
                       </td>
@@ -578,7 +586,7 @@ function EditUser() {
               </table>
             </div>
           ) : (
-            !loading && <div className="text-center text-purple-600 text-xs sm:text-sm font-semibold">لا توجد بيانات موظفين متاحة</div>
+            !loading && <div className="text-center text-gray-900 text-sm font-semibold">لا توجد بيانات موظفين متاحة</div>
           )}
           <AnimatePresence>
             {modal.isOpen && (
@@ -586,16 +594,17 @@ function EditUser() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-5"
               >
                 <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-2xl w-full max-w-[90vw] sm:max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-100"
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="bg-white p-4 sm:p-5 rounded-xl shadow-lg w-full max-w-[90vw] sm:max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-200/50"
                 >
-                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-purple-600 mb-3 text-right">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 text-right">
                     {modal.type === 'edit' && 'تعديل بيانات الموظف'}
                     {modal.type === 'percentageIncreaseTotal' && 'زيادة نسبة على الراتب الإجمالي'}
                     {modal.type === 'percentageIncreaseBasic' && 'زيادة نسبة على الراتب الأساسي'}
@@ -607,120 +616,120 @@ function EditUser() {
                     {modal.type === 'annualLeaveBalance' && 'تعديل رصيد الإجازة'}
                   </h3>
                   {modal.type === 'edit' ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">إجمالي الراتب بالبدلات</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">إجمالي الراتب بالبدلات</label>
                           <input
                             type="number"
                             value={modal.formData.totalSalaryWithAllowances}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, totalSalaryWithAllowances: e.target.value } })}
                             placeholder="أدخل إجمالي الراتب بالبدلات"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">الراتب الأساسي</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">الراتب الأساسي</label>
                           <input
                             type="number"
                             value={modal.formData.basicSalary}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, basicSalary: e.target.value } })}
                             placeholder="أدخل الراتب الأساسي"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">نسبة الحافز (%)</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">نسبة الحافز (%)</label>
                           <input
                             type="number"
                             value={modal.formData.bonusPercentage}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, bonusPercentage: e.target.value } })}
                             placeholder="أدخل نسبة الحافز"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">الحافز الأساسي</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">الحافز الأساسي</label>
                           <input
                             type="number"
                             value={modal.formData.basicBonus}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, basicBonus: e.target.value } })}
                             placeholder="أدخل الحافز الأساسي"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">بدل الوجبة</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">بدل الوجبة</label>
                           <input
                             type="number"
                             value={modal.formData.mealAllowance}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, mealAllowance: e.target.value } })}
                             placeholder="أدخل بدل الوجبة"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">التأمين الطبي</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">التأمين الطبي</label>
                           <input
                             type="number"
                             value={modal.formData.medicalInsurance}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, medicalInsurance: e.target.value } })}
                             placeholder="أدخل التأمين الطبي"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">التأمين الاجتماعي</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">التأمين الاجتماعي</label>
                           <input
                             type="number"
                             value={modal.formData.socialInsurance}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, socialInsurance: e.target.value } })}
                             placeholder="أدخل التأمين الاجتماعي"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                             onBlur={calculateNetSalaryPreview}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">رصيد الإجازة</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">رصيد الإجازة</label>
                           <input
                             type="number"
                             value={modal.formData.annualLeaveBalance}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, annualLeaveBalance: e.target.value } })}
                             placeholder="أدخل رصيد الإجازة"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">كلمة المرور الجديدة</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">كلمة المرور الجديدة</label>
                           <input
                             type="password"
                             value={modal.formData.password}
                             onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, password: e.target.value } })}
                             placeholder="أدخل كلمة المرور الجديدة"
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">نوع الشيفت</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">نوع الشيفت</label>
                           <select
                             value={modal.selectedShift}
                             onChange={handleShiftChange}
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                             disabled={loading}
                           >
                             <option value="">اختر الشيفت</option>
@@ -732,54 +741,54 @@ function EditUser() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">عدد أيام العمل</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">عدد أيام العمل</label>
                           <input
                             type="text"
                             value={modal.formData.workDays || ''}
                             readOnly
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm bg-gray-100 text-gray-600 shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-100 text-gray-600 text-sm shadow-sm text-right"
                             disabled
                           />
                         </div>
                         <div>
-                          <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">معاينة الراتب الصافي</label>
+                          <label className="block text-sm font-semibold text-gray-800 text-right">معاينة الراتب الصافي</label>
                           <input
                             type="text"
                             value={modal.formData.netSalaryPreview}
                             readOnly
-                            className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm bg-gray-100 text-gray-600 shadow-sm"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-100 text-gray-600 text-sm shadow-sm text-right"
                             disabled
                           />
                         </div>
                       </div>
                     </div>
                   ) : modal.type === 'percentageIncreaseTotal' ? (
-                    <div className="space-y-3">
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">نسبة الزيادة على الراتب الإجمالي (%)</label>
+                    <div className="space-y-4">
+                      <label className="block text-sm font-semibold text-gray-800 text-right">نسبة الزيادة على الراتب الإجمالي (%)</label>
                       <input
                         type="number"
                         value={modal.formData.percentageIncreaseTotal}
                         onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, percentageIncreaseTotal: e.target.value } })}
                         placeholder="أدخل النسبة (%)"
-                        className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         disabled={loading}
                       />
                     </div>
                   ) : modal.type === 'percentageIncreaseBasic' ? (
-                    <div className="space-y-3">
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">نسبة الزيادة على الراتب الأساسي (%)</label>
+                    <div className="space-y-4">
+                      <label className="block text-sm font-semibold text-gray-800 text-right">نسبة الزيادة على الراتب الأساسي (%)</label>
                       <input
                         type="number"
                         value={modal.formData.percentageIncreaseBasic}
                         onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, percentageIncreaseBasic: e.target.value } })}
                         placeholder="أدخل النسبة (%)"
-                        className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         disabled={loading}
                       />
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-800 text-right">
+                    <div className="space-y-4">
+                      <label className="block text-sm font-semibold text-gray-800 text-right">
                         {modal.type === 'bonusPercentage' ? 'نسبة الحافز (%)' : 'القيمة'}
                       </label>
                       <input
@@ -787,29 +796,29 @@ function EditUser() {
                         value={modal.formData[modal.type]}
                         onChange={(e) => setModal({ ...modal, formData: { ...modal.formData, [modal.type]: e.target.value } })}
                         placeholder={modal.type === 'bonusPercentage' ? 'أدخل النسبة (%)' : 'أدخل القيمة'}
-                        className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                         disabled={loading}
                         onBlur={modal.type !== 'annualLeaveBalance' ? calculateNetSalaryPreview : undefined}
                       />
                     </div>
                   )}
-                  <div className="mt-3">
+                  <div className="mt-4">
                     <label className="flex items-center space-x-2 space-x-reverse">
                       <input
                         type="checkbox"
                         checked={modal.applyToAll}
                         onChange={(e) => setModal({ ...modal, applyToAll: e.target.checked })}
-                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 rounded"
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-600 rounded"
                         disabled={loading}
                       />
-                      <span className="text-xs sm:text-sm font-semibold text-gray-800">تطبيق على الجميع</span>
+                      <span className="text-sm font-semibold text-gray-800">تطبيق على الجميع</span>
                     </label>
                   </div>
                   {modal.applyToAll && (
                     <select
                       value={modal.selectedShift}
                       onChange={handleShiftChange}
-                      className="w-full px-2 sm:px-3 py-2 border border-purple-200 rounded-lg text-right text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 bg-white mt-3 shadow-sm"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right mt-4"
                       disabled={loading}
                     >
                       <option value="">كل الشيفتات</option>
@@ -828,7 +837,7 @@ function EditUser() {
                         whileTap="tap"
                         type="button"
                         onClick={calculateNetSalaryPreview}
-                        className="bg-blue-600 text-white px-2 sm:px-3 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 text-xs sm:text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
+                        className="bg-blue-600 text-white px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
                         disabled={loading}
                       >
                         حساب الإجمالي
@@ -839,7 +848,7 @@ function EditUser() {
                       whileHover="hover"
                       whileTap="tap"
                       onClick={handleUpdate}
-                      className="bg-purple-600 text-white px-2 sm:px-3 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300 text-xs sm:text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
+                      className="bg-purple-600 text-white px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
                       disabled={loading}
                     >
                       تأكيد
@@ -849,7 +858,7 @@ function EditUser() {
                       whileHover="hover"
                       whileTap="tap"
                       onClick={closeModal}
-                      className="bg-gray-200 text-gray-800 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-300 transition-all duration-300 text-xs sm:text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
+                      className="bg-gray-200 text-gray-800 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold flex-1 min-w-[100px] shadow-sm"
                       disabled={loading}
                     >
                       إلغاء
@@ -865,26 +874,27 @@ function EditUser() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-5"
               >
                 <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="bg-white p-4 sm:p-6 rounded-2xl shadow-2xl w-full max-w-[90vw] sm:max-w-md border border-gray-100"
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="bg-white p-4 sm:p-5 rounded-xl shadow-lg w-full max-w-[90vw] sm:max-w-md border border-gray-200/50"
                 >
-                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-purple-600 mb-3 text-right">تأكيد الحذف</h3>
-                  <p className="text-right text-xs sm:text-sm text-gray-800 mb-4">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 text-right">تأكيد الحذف</h3>
+                  <p className="text-right text-sm text-gray-800 mb-4">
                     هل أنت متأكد من حذف الموظف <span className="font-semibold">{showDeleteConfirm.userName}</span>؟
                   </p>
-                  <div className="flex justify-between space-x-2 sm:space-x-3 space-x-reverse gap-4">
+                  <div className="flex justify-between space-x-3 space-x-reverse gap-4">
                     <motion.button
                       variants={buttonVariants}
                       whileHover="hover"
                       whileTap="tap"
                       onClick={handleDelete}
-                      className="bg-red-600 text-white px-2 sm:px-3 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 text-xs sm:text-sm font-semibold flex-1 shadow-sm"
+                      className="bg-red-600 text-white px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold flex-1 shadow-sm"
                       disabled={loading}
                     >
                       حذف
@@ -894,7 +904,7 @@ function EditUser() {
                       whileHover="hover"
                       whileTap="tap"
                       onClick={closeDeleteConfirm}
-                      className="bg-gray-200 text-gray-800 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-300 transition-all duration-300 text-xs sm:text-sm font-semibold flex-1 shadow-sm"
+                      className="bg-gray-200 text-gray-800 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-semibold flex-1 shadow-sm"
                       disabled={loading}
                     >
                       إلغاء
@@ -907,10 +917,11 @@ function EditUser() {
           <AnimatePresence>
             {showSuccessAnimation && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0, transition: { duration: 0.6, ease: 'easeOut' } }}
-                exit={{ opacity: 0, scale: 0.5, rotate: 90, transition: { duration: 0.4, ease: 'easeIn' } }}
-                className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
               >
                 <CustomCheckIcon />
               </motion.div>

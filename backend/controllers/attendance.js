@@ -1600,23 +1600,25 @@ exports.applySickLeave = async (req, res) => {
   }
 };
 
-
 exports.getMonthlySalaryReport = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
       console.error('MongoDB connection failed');
       return res.status(500).json({ success: false, message: 'فشل الاتصال بقاعدة البيانات', error: 'MongoDB غير متصل' });
     }
+
     const { yearMonth, employeeCode, shiftId } = req.query;
     if (!yearMonth) {
       console.error('Missing yearMonth parameter');
       return res.status(400).json({ success: false, message: 'يرجى تحديد الشهر (YYYY-MM)' });
     }
+
     const [year, month] = yearMonth.split('-');
     if (!year || !month || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
       console.error(`Invalid yearMonth format: ${yearMonth}`);
       return res.status(400).json({ success: false, message: 'تنسيق الشهر غير صالح، استخدم YYYY-MM' });
     }
+
     const startDate = new Date(`${yearMonth}-01`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
@@ -1624,6 +1626,7 @@ exports.getMonthlySalaryReport = async (req, res) => {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     console.log(`Processing report for ${yearMonth}, start: ${startDateStr}, end: ${endDateStr}`);
+
     const query = employeeCode ? { employeeCode } : {};
     if (shiftId) {
       if (!mongoose.Types.ObjectId.isValid(shiftId)) {
@@ -1632,54 +1635,102 @@ exports.getMonthlySalaryReport = async (req, res) => {
       }
       query.shiftType = shiftId;
     }
+
     const users = await User.find(query);
     if (!users.length) {
       console.error('No users found for query:', query);
       return res.status(404).json({ success: false, message: 'لا يوجد موظفين بهذا الكود أو الشيفت' });
     }
+
     const shifts = await Shift.find();
     if (!shifts.length) {
       console.error('No shifts found in database');
       return res.status(404).json({ success: false, message: 'لا توجد شيفتات مسجلة' });
     }
+
     const attendanceQuery = {
       date: { $gte: startDateStr, $lte: endDateStr },
       ...(employeeCode && { employeeCode }),
-      ...(shiftId && { shiftId })
+      ...(shiftId && { shiftId }),
     };
     const attendances = await Attendance.find(attendanceQuery).sort({ employeeCode: 1, date: 1 });
     const allDates = getAllDatesInRange(startDateStr, endDateStr).sort();
     const result = [];
     const totalsByEmployee = {};
+
     for (const user of users) {
       if (!user.shiftType || !mongoose.Types.ObjectId.isValid(user.shiftType)) {
         console.warn(`Invalid or missing shiftType for user ${user.employeeCode}. Skipping user.`);
         continue;
       }
+
       const shift = shifts.find((s) => s._id.toString() === user.shiftType?.toString());
       if (!shift) {
         console.warn(`Shift not found for user ${user.employeeCode}. Skipping user.`);
         continue;
       }
+
       if (!shift.workDays || !Array.isArray(shift.workDays) || shift.workDays.length === 0) {
         console.warn(`workDays is not defined or empty for shift ${shift.shiftName} (user ${user.employeeCode}). Skipping user.`);
         continue;
       }
-      const basicSalary = user.basicSalary;
-      const totalSalaryWithAllowances = user.totalSalaryWithAllowances;
+
+      const basicSalary = user.basicSalary || 0;
+      const totalSalaryWithAllowances = user.totalSalaryWithAllowances || 0;
       const medicalInsurance = user.medicalInsurance || 0;
       const socialInsurance = user.socialInsurance || 0;
       const mealAllowance = user.mealAllowance || 0;
+
       if (!basicSalary || !totalSalaryWithAllowances) {
         console.warn(`Missing required fields for user ${user.employeeCode}: basicSalary or totalSalaryWithAllowances`);
         continue;
       }
-      // ... (الجزء الخاص بـ salaryAdjustments يبقى كما هو، لكن سنضبط القيم الثابتة لاحقاً)
 
-      let salaryAdjustments = user.salaryAdjustments?.get(yearMonth) || null;
-      // ... (كود salaryAdjustments كما هو، لكن غير القيم الثابتة إلى ديناميكية إذا أمكن، أو اتركها للآن)
+      // حساب السلفات
+      const advances = await Advance.find({
+        employeeCode: user.employeeCode,
+        status: 'active',
+        advanceDate: { $lte: new Date(yearMonth + '-01') },
+        finalRepaymentDate: { $gte: new Date(yearMonth + '-01') },
+      }).lean();
 
-      const dailyRate = totalSalaryWithAllowances / 30; // معدل يومي للحساب الدقيق لبدل الإجازة
+      let totalAdvancesFull = 0; // إجمالي مبلغ السلف الأصلي
+      let totalAdvancesRemaining = 0; // المبلغ المتبقي بعد الخصومات
+      let loanDeduction = 0; // قسط الشهر الحالي
+
+      for (const advance of advances) {
+        totalAdvancesFull += roundNumber(advance.advanceAmount || 0);
+
+        // جمع الخصومات السابقة من deductionHistory حتى الشهر السابق
+        const previousDeductions = advance.deductionHistory
+          .filter((deduction) => deduction.month < yearMonth)
+          .reduce((sum, deduction) => sum + roundNumber(deduction.amount || 0), 0);
+
+        // المبلغ المتبقي = المبلغ الأصلي - الخصومات السابقة
+        const remainingForAdvance = roundNumber(advance.advanceAmount - previousDeductions);
+
+        // إضافة المبلغ المتبقي إلى الإجمالي
+        totalAdvancesRemaining += remainingForAdvance;
+
+        // حساب قسط الشهر الحالي إذا كان الشهر الحالي ضمن فترة السلف
+        const advanceStartDate = new Date(advance.advanceDate);
+        const advanceYearMonth = `${advanceStartDate.getFullYear()}-${String(advanceStartDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthsSinceStart = (parseInt(year) - advanceStartDate.getFullYear()) * 12 + (parseInt(month) - (advanceStartDate.getMonth() + 1));
+        if (monthsSinceStart >= 0 && monthsSinceStart < advance.installmentMonths && remainingForAdvance > 0) {
+          const deductionForMonth = Math.min(roundNumber(advance.monthlyInstallment || 0), remainingForAdvance);
+          loanDeduction += deductionForMonth;
+          totalAdvancesRemaining = roundNumber(totalAdvancesRemaining - deductionForMonth); // خصم القسط من المتبقي للعرض
+        }
+      }
+
+      const salaryAdjustments = user.salaryAdjustments?.get(yearMonth) || {
+        totalViolations: 0,
+        deductionViolationsInstallment: 0,
+        remainingViolations: 0,
+        occasionBonus: 0,
+      };
+
+      const dailyRate = totalSalaryWithAllowances / 30;
       const hourlyDeductionRate = dailyRate / (shift.baseHours || 9);
       const hourlyOvertimeRate =
         shift.overtimeBasis === 'basicSalary'
@@ -1699,8 +1750,8 @@ exports.getMonthlySalaryReport = async (req, res) => {
       let totalAnnualLeaveDays = 0;
       let totalSickLeaveDeduction = 0;
       let totalOfficialLeaveDays = 0;
-      let totalLeaveAllowanceDays = 0; // إضافة متغير جديد لحساب عدد أيام بدل الإجازة
-      let totalLeaveAllowance = 0; // إجمالي قيمة بدل الإجازة (سيتم حسابه ديناميكياً)
+      let totalLeaveAllowanceDays = 0;
+      let totalLeaveAllowance = 0;
       let mealAllowanceDeduction = 0;
 
       for (const date of allDates) {
@@ -1716,22 +1767,21 @@ exports.getMonthlySalaryReport = async (req, res) => {
             overtimeHours: 0,
             deductedHours: 0,
             sickLeaveDeduction: 'none',
-            leaveAllowance: 'لا يوجد', // افتراضي: لا يوجد بدل إجازة لليوم الجديد
+            leaveAllowance: 'لا يوجد',
             shiftId: shift._id,
             shiftType: shift.shiftType,
             shiftName: shift.shiftName,
             workDays: shift.workDays,
             leaveBalance: user.annualLeaveBalance || 21,
             gracePeriod: 0,
-            remainingGracePeriod: 0
+            remainingGracePeriod: 0,
           });
           await record.save();
         }
 
-        // حساب بدل الإجازة بشكل دقيق من صفحة رفع البصمة (حقل leaveAllowance)
         if (record.leaveAllowance && record.leaveAllowance.trim() === 'نعم') {
           totalLeaveAllowanceDays += 1;
-          totalLeaveAllowance += dailyRate; // إضافة المبلغ اليومي إذا كان "نعم"
+          totalLeaveAllowance += dailyRate;
         }
 
         if (['غائب', 'إجازة سنوية', 'إجازة مرضية'].includes(record.attendanceStatus)) {
@@ -1741,11 +1791,12 @@ exports.getMonthlySalaryReport = async (req, res) => {
         const isFriday = new Date(date).getDay() === 5;
         const overtimeRate = isFriday ? fridayHourlyOvertimeRate : hourlyOvertimeRate;
         const overtimeAmountForDay = Number(record.overtimeHours || 0) * overtimeRate;
+
         result.push({
           ...record._doc,
           basicSalary,
           totalSalaryWithAllowances,
-          overtimeAmountForDay
+          overtimeAmountForDay,
         });
 
         totalOvertimeHours += Number(record.overtimeHours || 0);
@@ -1763,7 +1814,6 @@ exports.getMonthlySalaryReport = async (req, res) => {
       const deductedDaysAmount = totalDeductedDays * dailyRate;
       const deductedHoursAmount = totalDeductedHours * hourlyDeductionRate;
       const violationDeduction = Number(salaryAdjustments.deductionViolationsInstallment || 0);
-      const advanceDeduction = Number(salaryAdjustments.deductionAdvancesInstallment || 0);
       const occasionBonus = Number(salaryAdjustments.occasionBonus || 0);
 
       let totalOvertimeAmount = 0;
@@ -1773,22 +1823,18 @@ exports.getMonthlySalaryReport = async (req, res) => {
         totalOvertimeAmount += record.overtimeAmountForDay || 0;
       }
 
-      // حساب الراتب الإجمالي مع إضافة إجمالي بدل الإجازة الديناميكي
-      const totalOvertimeAmountFinal = Number(totalSalaryWithAllowances + mealAllowance + totalOvertimeAmount + occasionBonus + totalLeaveAllowance); // إضافة totalLeaveAllowance هنا
-
-      // حساب الخصومات الدقيقة (بدون قيم ثابتة خاطئة)
+      const totalOvertimeAmountFinal = Number(totalSalaryWithAllowances + mealAllowance + totalOvertimeAmount + occasionBonus + totalLeaveAllowance);
       const calculatedDeductions = Number(
         medicalInsurance +
         socialInsurance +
         mealAllowanceDeduction +
         deductedDaysAmount +
         violationDeduction +
-        advanceDeduction +
+        loanDeduction +
         deductedHoursAmount
       );
-      // إذا كان هناك حاجة لتعديل إضافي للوصول إلى قيمة متوقعة (مثل 2103.85 في البيانات)، يمكن إضافة additionalDeduction، لكن اجعلها ديناميكية
-      const expectedTotalDeductions = calculatedDeductions; // أو احسبها ديناميكياً بناءً على البيانات الفعلية
-      const finalSalary = Number(totalOvertimeAmountFinal - expectedTotalDeductions);
+
+      const finalSalary = Number(totalOvertimeAmountFinal - calculatedDeductions);
 
       totalsByEmployee[user.employeeCode] = {
         employeeCode: user.employeeCode,
@@ -1803,8 +1849,8 @@ exports.getMonthlySalaryReport = async (req, res) => {
         shiftName: shift.shiftName,
         totalAttendanceDays,
         totalWeeklyOffDays,
-        totalLeaveAllowanceDays, // إضافة عدد الأيام
-        totalLeaveAllowance, // الإجمالي الجديد (مثل 256.67)
+        totalLeaveAllowanceDays,
+        totalLeaveAllowance,
         totalAbsentDays,
         totalDeductedHours,
         totalAnnualLeaveDays,
@@ -1817,39 +1863,38 @@ exports.getMonthlySalaryReport = async (req, res) => {
         totalViolationsFull: Number(salaryAdjustments.totalViolations || 0),
         totalViolations: Number(salaryAdjustments.remainingViolations || 0),
         violationDeduction: Number(salaryAdjustments.deductionViolationsInstallment || 0),
-        totalLoansFull: Number(salaryAdjustments.totalAdvances || 0),
-        totalLoans: Number(salaryAdjustments.remainingAdvances || 0),
-        loanDeduction: Number(salaryAdjustments.deductionAdvancesInstallment || 0),
-        totalDeductions: expectedTotalDeductions,
+        totalLoansFull: totalAdvancesFull,
+        totalLoans: totalAdvancesRemaining,
+        loanDeduction: loanDeduction,
+        totalDeductions: calculatedDeductions,
         totalOvertimeAmount: totalOvertimeAmount,
         totalGrossAmount: totalOvertimeAmountFinal,
         finalSalary,
         deductedDaysAmount,
-        additionalDeduction: 0 // يمكن حسابه إذا لزم
+        additionalDeduction: 0,
       };
     }
+
     return res.status(200).json({
       success: true,
       message: 'تم جلب تقرير الراتب الشهري بنجاح',
       data: result,
-      totals: Object.values(totalsByEmployee)
+      totals: Object.values(totalsByEmployee),
     });
   } catch (error) {
     console.error('خطأ في getMonthlySalaryReport:', {
       message: error.message,
       stack: error.stack,
-      query: req.query
+      query: req.query,
     });
     return res.status(500).json({
       success: false,
       message: 'حدث خطأ أثناء جلب تقرير الراتب الشهري',
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 };
-
-
 exports.updateSalaryAdjustment = async (req, res) => {
   try {
     const { employeeCode, yearMonth } = req.params;
