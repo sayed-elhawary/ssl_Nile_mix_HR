@@ -4,6 +4,15 @@ import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import * as XLSX from 'xlsx';
+
+// الحصول على التاريخ الحالي بصيغة YYYY-MM
+const getCurrentYearMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0'); // إضافة 1 لأن الأشهر تبدأ من 0
+  return `${year}-${month}`;
+};
+
 const CustomCheckIcon = () => (
   <motion.div
     className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
@@ -24,6 +33,7 @@ const CustomCheckIcon = () => (
     </motion.svg>
   </motion.div>
 );
+
 const CustomLoadingSpinner = () => (
   <motion.div
     className="flex items-center justify-center"
@@ -39,6 +49,7 @@ const CustomLoadingSpinner = () => (
     <span className="mr-3 text-purple-600 text-sm font-medium">جارٍ التحميل...</span>
   </motion.div>
 );
+
 const AdvanceIcon = () => (
   <div className="h-8 w-8 text-purple-600">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,12 +57,13 @@ const AdvanceIcon = () => (
     </svg>
   </div>
 );
+
 function CreateAdvance() {
   const [formData, setFormData] = useState({
     employeeCode: '',
     employeeName: '',
     advanceAmount: '',
-    advanceDate: '',
+    advanceDate: getCurrentYearMonth(), // تعيين التاريخ الحالي كقيمة افتراضية
     installmentMonths: '',
   });
   const [loading, setLoading] = useState(false);
@@ -62,16 +74,18 @@ function CreateAdvance() {
   const [editFormData, setEditFormData] = useState({
     id: '',
     advanceAmount: '',
-    advanceDate: '',
+    advanceDate: getCurrentYearMonth(), // تعيين التاريخ الحالي كقيمة افتراضية
     installmentMonths: '',
     status: 'active',
   });
   const [filterActive, setFilterActive] = useState(false);
   const [filterCompleted, setFilterCompleted] = useState(false);
   const [searchEmployeeCode, setSearchEmployeeCode] = useState('');
+
   useEffect(() => {
     fetchAdvances();
   }, []);
+
   const fetchAdvances = async () => {
     setLoading(true);
     try {
@@ -103,6 +117,7 @@ function CreateAdvance() {
       setLoading(false);
     }
   };
+
   const exportToExcel = () => {
     const filteredAdvances = advances.filter((advance) => {
       const matchesStatus =
@@ -118,18 +133,19 @@ function CreateAdvance() {
       'كود الموظف': advance.employeeCode,
       'اسم الموظف': advance.employeeName,
       'قيمة السلفة': advance.advanceAmount,
-      'تاريخ السلفة': advance.advanceDate.slice(0,7), // عرض YYYY-MM فقط
+      'تاريخ السلفة': advance.advanceDate.slice(0,7),
       'عدد الأشهر': advance.installmentMonths,
       'القسط الشهري': advance.monthlyInstallment.toFixed(2),
       'المبلغ المتبقي': advance.remainingAmount,
-      'تاريخ السداد النهائي': advance.finalRepaymentDate.slice(0,7), // عرض YYYY-MM فقط
+      'تاريخ السداد النهائي': advance.finalRepaymentDate.slice(0,7),
       'الحالة': advance.status === 'active' ? 'نشط' : 'مكتمل',
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Advances');
-    XLSX.writeFile(wb, `advances_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `advances_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
+
   const searchEmployee = async () => {
     if (!formData.employeeCode) {
       setEmployeeFound(null);
@@ -189,11 +205,13 @@ function CreateAdvance() {
       setLoading(false);
     }
   };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const trimmedValue = String(value).trim();
     setFormData({ ...formData, [name]: trimmedValue });
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!employeeFound) {
@@ -231,13 +249,12 @@ function CreateAdvance() {
     }
     setLoading(true);
     try {
-      // إضافة -01 إلى advanceDate قبل الإرسال
       const fullAdvanceDate = `${formData.advanceDate}-01`;
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/advance/create`,
         {
           ...formData,
-          advanceDate: formData.advanceDate, // الباك سيتعامل معه
+          advanceDate: formData.advanceDate,
           monthlyInstallment: parseFloat(formData.advanceAmount) / parseInt(formData.installmentMonths),
           remainingAmount: formData.advanceAmount,
         },
@@ -259,7 +276,7 @@ function CreateAdvance() {
             employeeCode: '',
             employeeName: '',
             advanceAmount: '',
-            advanceDate: '',
+            advanceDate: getCurrentYearMonth(), // إعادة تعيين التاريخ الحالي
             installmentMonths: '',
           });
           setEmployeeFound(null);
@@ -288,21 +305,24 @@ function CreateAdvance() {
       setLoading(false);
     }
   };
+
   const openEditModal = (advance) => {
     setEditFormData({
       id: advance._id,
       advanceAmount: advance.advanceAmount,
-      advanceDate: advance.advanceDate.slice(0,7), // قص إلى YYYY-MM لـ type="month"
+      advanceDate: advance.advanceDate ? advance.advanceDate.slice(0, 7) : getCurrentYearMonth(), // استخدام التاريخ المحفوظ أو الحالي
       installmentMonths: advance.installmentMonths,
       status: advance.status,
     });
     setEditModalOpen(true);
   };
+
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     const trimmedValue = String(value).trim();
     setEditFormData({ ...editFormData, [name]: trimmedValue });
   };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editFormData.advanceAmount || !editFormData.advanceDate || !editFormData.installmentMonths || !editFormData.status) {
@@ -329,13 +349,12 @@ function CreateAdvance() {
     }
     setLoading(true);
     try {
-      // إضافة -01 إلى advanceDate قبل الإرسال
       const fullAdvanceDate = `${editFormData.advanceDate}-01`;
       const response = await axios.put(
         `${process.env.REACT_APP_API_URL}/api/advance/update/${editFormData.id}`,
         {
           advanceAmount: editFormData.advanceAmount,
-          advanceDate: editFormData.advanceDate, // الباك سيتعامل معه
+          advanceDate: editFormData.advanceDate,
           installmentMonths: editFormData.installmentMonths,
           status: editFormData.status,
         },
@@ -375,6 +394,7 @@ function CreateAdvance() {
       setLoading(false);
     }
   };
+
   const handleDelete = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذه السلفة؟')) {
       return;
@@ -418,6 +438,7 @@ function CreateAdvance() {
       setLoading(false);
     }
   };
+
   const filteredAdvances = advances.filter((advance) => {
     const matchesStatus =
       (!filterActive && !filterCompleted) ||
@@ -428,10 +449,12 @@ function CreateAdvance() {
       : true;
     return matchesStatus && matchesEmployeeCode;
   });
+
   const formVariants = {
     hidden: { opacity: 0, y: 50, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.8, ease: 'easeOut', type: 'spring', stiffness: 150, damping: 18 } },
   };
+
   const buttonVariants = {
     hover: {
       scale: 1.02,
@@ -441,6 +464,7 @@ function CreateAdvance() {
     },
     tap: { scale: 0.98, transition: { duration: 0.2, ease: 'easeOut' } },
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 p-4 sm:p-6 md:p-8 font-noto-sans-arabic dir=rtl" style={{ scrollBehavior: 'smooth', overscrollBehavior: 'none' }}>
       <div className="container mx-auto max-w-7xl">
@@ -498,7 +522,7 @@ function CreateAdvance() {
                   employeeCode: '',
                   employeeName: '',
                   advanceAmount: '',
-                  advanceDate: '',
+                  advanceDate: getCurrentYearMonth(), // إعادة تعيين التاريخ الحالي
                   installmentMonths: '',
                 });
                 setEmployeeFound(null);
@@ -559,7 +583,7 @@ function CreateAdvance() {
               disabled={loading}
             />
             <input
-              type="month" // تعديل هنا: type="month" بدلاً من "date"
+              type="month"
               name="advanceDate"
               value={formData.advanceDate}
               onChange={handleInputChange}
@@ -663,11 +687,11 @@ function CreateAdvance() {
                       <td className="p-4 border-b border-gray-200">{advance.employeeCode}</td>
                       <td className="p-4 border-b border-gray-200">{advance.employeeName}</td>
                       <td className="p-4 border-b border-gray-200">{advance.advanceAmount}</td>
-                      <td className="p-4 border-b border-gray-200">{advance.advanceDate.slice(0,7)}</td> {/* عرض YYYY-MM فقط */}
+                      <td className="p-4 border-b border-gray-200">{advance.advanceDate.slice(0,7)}</td>
                       <td className="p-4 border-b border-gray-200">{advance.installmentMonths}</td>
                       <td className="p-4 border-b border-gray-200">{advance.monthlyInstallment.toFixed(2)}</td>
                       <td className="p-4 border-b border-gray-200">{advance.remainingAmount}</td>
-                      <td className="p-4 border-b border-gray-200">{advance.finalRepaymentDate.slice(0,7)}</td> {/* عرض YYYY-MM فقط */}
+                      <td className="p-4 border-b border-gray-200">{advance.finalRepaymentDate.slice(0,7)}</td>
                       <td className="p-4 border-b border-gray-200">{advance.status === 'active' ? 'نشط' : 'مكتمل'}</td>
                       <td className="p-4 border-b border-gray-200 flex space-x-2 space-x-reverse">
                         <motion.button
@@ -721,7 +745,7 @@ function CreateAdvance() {
                     className="p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 transition-all duration-200 bg-gray-50 text-sm shadow-sm text-right"
                   />
                   <input
-                    type="month" // تعديل هنا: type="month" بدلاً من "date"
+                    type="month"
                     name="advanceDate"
                     value={editFormData.advanceDate}
                     onChange={handleEditInputChange}
@@ -799,4 +823,5 @@ function CreateAdvance() {
     </div>
   );
 }
+
 export default CreateAdvance;
