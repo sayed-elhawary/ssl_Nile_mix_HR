@@ -3,6 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { AlertCircle, Search, Plus, Trash2, X } from 'lucide-react';
 
+// الحصول على التاريخ الحالي بصيغة YYYY-MM
+const getCurrentYearMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
 const CustomCheckIcon = () => (
   <motion.div
     className="relative h-12 w-12 bg-white p-4 rounded-full shadow-md"
@@ -52,7 +60,7 @@ function Violations() {
     employeeName: '',
     department: '',
     violationPrice: '',
-    date: '',
+    date: getCurrentYearMonth(), // تعيين التاريخ الحالي كقيمة افتراضية
     vehicleCode: '',
     station: '',
     violationImage: null,
@@ -201,7 +209,7 @@ function Violations() {
       employeeName: violation.employeeName,
       department: violation.department || '',
       violationPrice: violation.violationPrice,
-      date: violation.date.split('T')[0].substring(0, 7), // Format to YYYY-MM
+      date: violation.date ? violation.date.split('T')[0].substring(0, 7) : getCurrentYearMonth(), // استخدام التاريخ المحفوظ أو الحالي
       vehicleCode: violation.vehicleCode,
       station: violation.station,
       violationImage: null,
@@ -257,7 +265,7 @@ function Violations() {
       employeeName: '',
       department: '',
       violationPrice: '',
-      date: '',
+      date: getCurrentYearMonth(), // إعادة تعيين التاريخ الحالي
       vehicleCode: '',
       station: '',
       violationImage: null,
